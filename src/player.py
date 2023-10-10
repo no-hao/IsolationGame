@@ -94,3 +94,21 @@ class ComputerPlayer(Player):
 
     def remove_token(self, board: Board) -> None:
         pass
+
+
+class HeuristicStrategy(ABC):
+    @abstractmethod
+    def evaluate_board(self, board, player):
+        pass
+
+
+class HeuristicStrategy1(HeuristicStrategy):
+    def evaluate_board(self, board, player):
+        # Implementation for the first heuristic will be added later
+        pass
+
+
+class HeuristicStrategy2(HeuristicStrategy):
+    def evaluate_board(self, board, player):
+        # Implementation for the second heuristic will be added later
+        pass
