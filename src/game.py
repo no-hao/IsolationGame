@@ -7,16 +7,12 @@ class Game:
         self.board = Board()
         self.players = [player1, player2]
 
-        # List of starting positions
-        starting_positions = [(0, 3), (7, 2)]
-        random.shuffle(starting_positions)
+        # Always assign Player 1 to (0, 3) and Player 2 to (7, 2)
+        self.players[0].position = (0, 3)
+        self.players[1].position = (7, 2)
 
-        # Assign starting positions to players
-        self.players[0].position = starting_positions[0]
-        self.players[1].position = starting_positions[1]
-
-        # First player to play is the one at position (0,3)
-        if self.players[0].position == (0, 3):
+        # Randomize which player starts the game
+        if random.choice([True, False]):
             self.current_player = self.players[0]
             self.next_player = self.players[1]
         else:
@@ -28,9 +24,18 @@ class Game:
         self.current_player, self.next_player = self.next_player, self.current_player
 
     def is_game_over(self):
-        """Checks if the game is over."""
-        # TODO: Implement the logic to check if the current player has no valid moves left.
-        return False
+            """Checks if the game is over."""
+            row, col = self.next_player.position
+            # Check all possible moves (up, down, left, right, and diagonally)
+            possible_moves = [
+                (row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
+                (row, col - 1),                     (row, col + 1),
+                (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)
+            ]
+            for move in possible_moves:
+                if self.next_player._is_valid_move(*move, self.board):
+                    return False  # A valid move exists for the next player
+            return True  # No valid moves left
 
     def play(self):
         print("Starting the game of Isolation!")
