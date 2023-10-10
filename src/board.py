@@ -45,11 +45,10 @@ class Board:
         """Display the board in a visually appealing format."""
         col_indices = '    ' + '   '.join([f"{col}" for col in range(self._NUM_COLS)])
         separator = '  +' + '---+' * self._NUM_COLS
-        rows = [
-            separator,
-            *[f"{row} | " + " | ".join([cell.value for cell in self._grid[row]]) + " |" for row in range(self._NUM_ROWS)],
-            separator
-        ]
+        rows = [separator]
+        for row in range(self._NUM_ROWS):
+            rows.append(f"{row} | " + " | ".join([cell.value for cell in self._grid[row]]) + " |")
+            rows.append(separator)
         return "\n".join([col_indices] + rows)
 
     @staticmethod
