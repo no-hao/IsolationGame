@@ -41,6 +41,11 @@ class Board:
             return self._grid[row][col].state
         return None
 
+    @staticmethod
+    def is_within_board(row, col):
+        """Determine if the given move (row, col) is within the board boundaries."""
+        return 0 <= row < Board._NUM_ROWS and 0 <= col < Board._NUM_COLS
+
     def display(self):
         """Display the board in a visually appealing format."""
         col_indices = '    ' + '   '.join([f"{col}" for col in range(self._NUM_COLS)])
@@ -51,7 +56,9 @@ class Board:
             rows.append(separator)
         return "\n".join([col_indices] + rows)
 
-    @staticmethod
-    def is_within_board(row, col):
-        """Determine if the given move (row, col) is within the board boundaries."""
-        return 0 <= row < Board._NUM_ROWS and 0 <= col < Board._NUM_COLS
+    def simulate_move(self, row, col, state):
+        """Simulates a move and returns the resulting new board state without modifying the current board."""
+        new_board = Board()
+        new_board._grid = [[Cell(cell.state) for cell in row] for row in self._grid]  # Deep copy of the board grid
+        new_board.set_cell_state(row, col, state)
+        return new_board

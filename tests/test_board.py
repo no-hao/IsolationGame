@@ -43,6 +43,22 @@ class TestBoard(unittest.TestCase):
         self.assertTrue("0 |   |   |   | 1 |   |   |" in display_output)
         self.assertTrue("7 |   |   | 2 |   |   |   |" in display_output)
 
+    def test_simulate_move(self):
+        """Test the simulate_move method."""
+        # Setting an initial state
+        self.board.set_cell_state(2, 3, CellState.PLAYER_1)
+
+        # Simulate a move without modifying the original board
+        new_board = self.board.simulate_move(3, 3, CellState.PLAYER_2)
+
+        # Check the original board state remains unchanged
+        self.assertEqual(self.board.get_cell_state(2, 3), CellState.PLAYER_1)
+        self.assertEqual(self.board.get_cell_state(3, 3), CellState.EMPTY)
+
+        # Check the new board has the simulated move
+        self.assertEqual(new_board.get_cell_state(2, 3), CellState.PLAYER_1)
+        self.assertEqual(new_board.get_cell_state(3, 3), CellState.PLAYER_2)
+
 
 if __name__ == "__main__":
     unittest.main()
