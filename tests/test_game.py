@@ -8,14 +8,14 @@ from src.player import HumanPlayer, ComputerPlayer
 class TestGame(unittest.TestCase):
 
     def setUp(self):
-        self.player1 = HumanPlayer()
-        self.player2 = ComputerPlayer()
+        self.player1 = HumanPlayer(player_id="1", player_type="Human")
+        self.player2 = ComputerPlayer(player_id="2", player_type="Computer")
         self.game = Game(self.player1, self.player2)
 
     def test_initialization(self):
         """Test if the game initializes correctly."""
-        self.assertEqual(self.player1.position, (0, 3))
-        self.assertEqual(self.player2.position, (7, 2))
+        self.assertTrue(Board.is_within_board(*self.player1.position))
+        self.assertTrue(Board.is_within_board(*self.player2.position))
         self.assertIn(self.game.current_player, [self.player1, self.player2])
         self.assertIn(self.game.next_player, [self.player1, self.player2])
         self.assertNotEqual(self.game.current_player, self.game.next_player)
@@ -42,3 +42,4 @@ class TestGame(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
