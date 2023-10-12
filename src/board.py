@@ -35,7 +35,7 @@ class Board:
         self._grid = [[Cell() for _ in range(Board._NUM_COLS)] for _ in range(Board._NUM_ROWS)]
 
     def add_observer(self, observer):
-        if observer not in self._observers:
+        if observer is not None and observer not in self._observers:
             self._observers.append(observer)
 
     def remove_observer(self, observer):
@@ -44,6 +44,9 @@ class Board:
     def notify_observers(self):
         print("[DEBUG] Notifying all observers of the board change.")
         for observer in self._observers:
+            if observer is None:
+                warnings.warn("Detected a None observer. This is unexpected and should be investigated.")
+                continue
             observer.update()
 
     def set_cell_state(self, row, col, state):

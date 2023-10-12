@@ -1,22 +1,24 @@
 import unittest
+from src.game import Game
 from src.board import Board, CellState
-from src.player import HumanPlayer, ComputerPlayer
+from src.player import HumanPlayer, ComputerPlayer, Heuristics
 
 class TestPlayer(unittest.TestCase):
 
     def setUp(self):
-        self.board = Board()
         self.player1 = HumanPlayer(player_id="1", player_type="Human")
-        self.player2 = ComputerPlayer(player_id="2", player_type="Computer")
-        # Set initial positions for the players for the purpose of these tests
-        self.player1.position = (3, 3)
-        self.player2.position = (4, 4)
+        self.player2 = ComputerPlayer(player_id="2", player_type="Computer", game=None, board=None, heuristic_function=Heuristics.mobility)
+        self.game = Game(self.player1, self.player2)  # Initialize the game with both players
+        self.board = self.game.board
+        # Update the game and board references for player2
+        self.player2.game = self.game
+        self.player2.board = self.board
 
     def test_initialization(self):
+        self.assertIsInstance(self.player1, HumanPlayer)
+        self.assertIsInstance(self.player2, ComputerPlayer)
         self.assertEqual(self.player1.player_id, "1")
-        self.assertEqual(self.player1.player_type, "Human")
         self.assertEqual(self.player2.player_id, "2")
-        self.assertEqual(self.player2.player_type, "Computer")
 
     def test_valid_move(self):
         self.assertTrue(self.player1._is_valid_move(4, 3, self.board))

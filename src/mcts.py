@@ -1,11 +1,12 @@
-from .board import Board
-from .player import ComputerPlayer
-from random import choice
 import math
+from .game import Game
+from random import choice
+from .board import Board, CellState
+
 
 class MCTSNode:
-    def __init__(self, board: Board, move: tuple = None, parent=None):
-        self.board = board
+    def __init__(self, game: Game, move: tuple = None, parent=None):
+        self.game = game
         self.move = move
         self.parent = parent
         self.children = []
@@ -13,66 +14,60 @@ class MCTSNode:
         self.visits = 0
 
     def add_child(self, child_node):
-        """Add a child node to the current node."""
         self.children.append(child_node)
 
     def is_fully_expanded(self):
-        """Check if all possible moves have been explored."""
-        return len(self.children) == len(self.board.get_possible_moves())
+        return len(self.children) == len(self.game.board.get_possible_moves())
 
     def best_child(self, exploration_weight=1.4):
-        """Return the best child node, using the UCT formula."""
         return max(self.children, key=lambda child: child.wins / child.visits + exploration_weight * math.sqrt(2 * math.log(self.visits) / child.visits))
 
-    def rollout(self, player):
-        """Simulate a random game from this node."""
-        rollout_board = self.board
-        while not rollout_board.is_game_over():
-            possible_moves = rollout_board.get_possible_moves()
-            move = choice(possible_moves)
-            rollout_board = rollout_board.simulate_move(move)
-        # Return 1 if the AI player wins, -1 if the opponent wins, 0 otherwise (draw)
-        return 1 if rollout_board.winner() == player else -1
 
 class MCTS:
-    def __init__(self, exploration_weight=1.4):
-        self.exploration_weight = exploration_weight
+    def __init__(self, game: Game, heuristic=None):
+        self.game = game
+        self.heuristic = heuristic or (lambda board: 0)  # Default to a no-op heuristic if none provided
 
-    def search(self, initial_board: Board, player: ComputerPlayer, iterations: int = 1000):
-        root = MCTSNode(initial_board)
+    def search(self, iterations: int = 1000):
+        root = MCTSNode(self.game)
 
         for _ in range(iterations):
             node = self._select_node(root)
-            if not node.board.is_game_over():
+            if not node.game.is_game_over():
                 node = self._expand(node)
-                reward = self._simulate(node, player)
+                reward = self._simulate(node)
                 self._backpropagate(node, reward)
 
-        return root.best_child(self.exploration_weight).move
+        return root.best_child().move
 
     def _select_node(self, node: MCTSNode):
-        """Select a node in the tree to expand."""
         while not node.is_fully_expanded():
-            node = node.best_child(self.exploration_weight)
+            node = node.best_child()  # Use the heuristic to guide the selection
         return node
 
     def _expand(self, node: MCTSNode):
-        """Expand a node by adding a new child node."""
-        possible_moves = node.board.get_possible_moves()
+        possible_moves = node.game.board.get_possible_moves()
         move = choice(possible_moves)
-        child_board = node.board.simulate_move(move)
-        child_node = MCTSNode(child_board, move, node)
+        child_game = deepcopy(node.game)
+        child_game.make_move(*move)
+        child_node = MCTSNode(child_game, move, node)
         node.add_child(child_node)
         return child_node
 
-    def _simulate(self, node: MCTSNode, player: ComputerPlayer):
-        """Simulate a game from the node's current board state."""
-        return node.rollout(player)
+    def _simulate(self, node: MCTSNode):
+        simulated_game = deepcopy(node.game)
+        
+        while not simulated_game.is_game_over():
+            possible_moves = simulated_game.board.get_possible_moves()
+            if not possible_moves:
+                break
+            move = choice(possible_moves)
+            simulated_game.make_move(*move)
+
+        return 1 if simulated_game.winner() == "Computer" else -1
 
     def _backpropagate(self, node: MCTSNode, reward: int):
-        """Update nodes with the result of the simulation."""
         while node is not None:
             node.visits += 1
             node.wins += reward
             node = node.parent
-

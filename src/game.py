@@ -1,5 +1,6 @@
 import random
 from .board import Board, CellState
+from .player import ComputerPlayer
 
 class Game:
     def __init__(self, player1, player2):
@@ -37,8 +38,11 @@ class Game:
             row, col = position
             self.board.set_cell_state(row, col, state)
 
-        starting_player.position = (0, 3)
-        other_player.position = (7, 2)
+        if starting_player:
+            starting_player.position = (0, 3)
+        if other_player:
+            other_player.position = (7, 2)
+
 
     def apply_move(self, player, move):
         """Applies the player's move on the board, assumes valid move is given."""
@@ -96,8 +100,16 @@ class Game:
             try:
                 move = self.current_player.move(self.board)
                 self.apply_move(self.current_player, move)
-                token_removal = self.current_player.remove_token(self.board)
+
+                # If it's the computer player's turn:
+                if type(self.current_player).__name__ == "ComputerPlayer":
+                    token_removal = self.current_player.remove_token(self.board)
+                else:
+                    # If it's a human player's turn, ask for token removal input
+                    token_removal = self.current_player.remove_token(self.board)
+
                 self.apply_remove_token(self.current_player, token_removal)
+
             except Exception as e:
                 print(f"Error: {e}")
                 continue

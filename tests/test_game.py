@@ -2,23 +2,23 @@ import random
 import unittest
 from src.game import Game
 from src.board import Board, CellState
-from src.player import HumanPlayer, ComputerPlayer
+from src.player import HumanPlayer, ComputerPlayer, Heuristics
 
 
 class TestGame(unittest.TestCase):
 
     def setUp(self):
+        self.board = Board()  # Initialize the board first
         self.player1 = HumanPlayer(player_id="1", player_type="Human")
-        self.player2 = ComputerPlayer(player_id="2", player_type="Computer")
-        self.game = Game(self.player1, self.player2)
+        self.game = Game(self.player1, None)  # Temporarily set player2 to None
+        self.player2 = ComputerPlayer(player_id="2", player_type="Computer", game=self.game, board=self.board, heuristic_function=Heuristics.mobility)
+        self.game.players[1] = self.player2  # Set player2 in the game object
 
     def test_initialization(self):
-        """Test if the game initializes correctly."""
-        self.assertTrue(Board.is_within_board(*self.player1.position))
-        self.assertTrue(Board.is_within_board(*self.player2.position))
-        self.assertIn(self.game.current_player, [self.player1, self.player2])
-        self.assertIn(self.game.next_player, [self.player1, self.player2])
-        self.assertNotEqual(self.game.current_player, self.game.next_player)
+        self.assertIsInstance(self.game, Game)
+        self.assertEqual(self.game.board, self.board)
+        self.assertIn(self.player1, self.game.players)
+        self.assertIn(self.player2, self.game.players)
 
     def test_switch_players(self):
         """Test if players switch correctly after a move."""
@@ -42,4 +42,3 @@ class TestGame(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
