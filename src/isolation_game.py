@@ -19,7 +19,6 @@ class IsolationGame:
         self.draw_board()
         self.center_window(self.root)
 
-
     def initialize_game_state(self):
         """Initialize or reset the game state."""
         self.current_player = choice(["A", "B"])
@@ -66,8 +65,13 @@ class IsolationGame:
         self.setup_player_selection()
 
         # Start/Restart button
-        self.start_button = tk.Button(self.root, text="Start", command=self.start_game)
-        self.start_button.pack(pady=20)
+        self.start_button = tk.Button(self.root, text="Start", command=self.start_game, font=("Arial", 20, 'bold'), bg="#2ecc71", fg="white", padx=20, pady=10, relief=tk.GROOVE, bd=3)
+        self.start_button.pack(pady=30)
+
+
+        # Add a separator line
+        self.separator = tk.Frame(self.root, height=1, bg='grey')
+        self.separator.pack(fill=tk.X, pady=10)
 
         # Setting up the game legend last so it appears below everything else
         self.setup_legend()
