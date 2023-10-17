@@ -39,7 +39,6 @@ class IsolationGame:
 
         self.draw_board()
 
-
     def draw_board(self):
         print("Drawing the board...")
         for row in range(self.rows):
@@ -155,7 +154,6 @@ class IsolationGame:
                     valid_moves.append((new_row, new_column))
         return valid_moves
 
-
     def switch_player(self):
         print(f"Switching player. Current player: {self.current_player}")
         self.current_player = "A" if self.current_player == "B" else "B"
@@ -175,7 +173,6 @@ class IsolationGame:
             return True
         return False
 
-
     def display_winner(self, winner):
         """Display the winner and disable further interactions."""
         self.turn_label.config(text=f"Player {winner} wins!")
@@ -184,13 +181,15 @@ class IsolationGame:
     def restart_game(self):
         print("Restarting game...")
 
+        # Randomly choose starting player
+        self.current_player = choice(["A", "B"])
+
         # Reset the game state
         self.players = {
             "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
             "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
         }
         self.removed_tokens.clear()
-        self.current_player = "A"
         self.is_move_phase = True
 
         # Clear the canvas and redraw the board
@@ -199,6 +198,8 @@ class IsolationGame:
         self.turn_label.config(text=f"Player {self.current_player}'s Turn to Move")
         self.invalid_move_label.config(text="")
 
+        # Rebind the canvas click event
+        self.canvas.bind("<Button-1>", self.canvas_clicked)
 
 def run_game():
     root = tk.Tk()
