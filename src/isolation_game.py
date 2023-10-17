@@ -60,6 +60,17 @@ class IsolationGame:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, tags=f"cell_{row}_{column}")
         self.canvas.create_text((x1 + x2) / 2, (y1 + y2) / 2, text=text, font=("Arial", 16), fill="white")
 
+    def shake(self):
+        """
+        Shakes the main window to provide visual feedback for an invalid action.
+        """
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        delta = 4  # Define how much the window will move
+        for _ in range(3):  # Define the number of shakes
+            for (dx, dy) in [(delta, 0), (-delta, 0), (-delta, 0), (delta, 0)]:
+                self.root.geometry(f"+{x+dx}+{y+dy}")
+                self.root.update()
+
     def clear_cell(self, row, column):
         print(f"Clearing cell at ({row}, {column})")
         """Reset the cell to its default state"""
@@ -102,6 +113,7 @@ class IsolationGame:
             self.switch_phase()
         else:
             self.invalid_move_label.config(text="Invalid Move! Try again.")
+            self.shake()
 
     def remove_cell(self, row, column):
         print(f"Removing cell at ({row}, {column})")
@@ -118,8 +130,10 @@ class IsolationGame:
                 self.switch_phase()
             else:
                 self.invalid_move_label.config(text="Cannot remove a cell occupied by a player!")
+                self.shake()
         else:
             self.invalid_move_label.config(text="Cell already has its token removed!")
+            self.shake()
 
     def get_valid_moves(self, row, column):
         print(f"Getting valid moves for pawn at ({row}, {column})")
