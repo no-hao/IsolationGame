@@ -1,4 +1,4 @@
-from random import choice
+import random
 import tkinter as tk
 
 class IsolationGame:
@@ -21,13 +21,14 @@ class IsolationGame:
 
     def initialize_game_state(self):
         """Initialize or reset the game state."""
-        self.current_player = choice(["A", "B"])
+        self.current_player = random.choice(["A", "B"])
         self.players = {
             "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
             "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
         }
         self.removed_tokens = set()
         self.is_move_phase = True
+        self.game_over = False  # Add this line to track if the game is over
 
     def setup_ui_components(self):
         """Set up the UI components."""
@@ -213,23 +214,53 @@ class IsolationGame:
         print(f"Switched to Player {self.current_player}")  # Print the switched player
         self.is_move_phase = True  # Always start the new player's turn in the move phase
         self.update_turn_labels()
+        self.trigger_next_move()
 
     def canvas_clicked(self, event):
         print(f"Canvas clicked at coordinates: {event.x}, {event.y}")
         column = event.x // self.cell_size
         row = event.y // self.cell_size
 
-        if self.playerA_selection.get() == "Computer" and self.current_player == "A":
-            print("Player A (Computer) will make a move.")
-            return
-        if self.playerB_selection.get() == "Computer" and self.current_player == "B":
-            print("Player B (Computer) will make a move.")
-            return
-
         if self.is_move_phase:
             self.cell_clicked(row, column)
         else:
             self.remove_cell(row, column)
+
+    def computer_move(self):
+        """Generate and apply a random valid move for the computer."""
+        valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+        move = random.choice(valid_moves) if valid_moves else None
+        if move:
+            self.cell_clicked(*move)
+
+            # After making a move, AI should remove a cell
+            if not self.is_move_phase:  # Ensure we're in the remove phase
+                valid_remove_cells = [
+                    (r, c) for r in range(self.rows) for c in range(self.columns)
+                    if (r, c) not in self.removed_tokens and
+                    (r, c) != (self.players['A']['row'], self.players['A']['column']) and 
+                    (r, c) != (self.players['B']['row'], self.players['B']['column'])
+                ]
+                remove_cell = random.choice(valid_remove_cells) if valid_remove_cells else None
+                if remove_cell:
+                    self.remove_cell(*remove_cell)
+        else:  # If AI has no valid moves, the other player wins
+            other_player = 'B' if self.current_player == 'A' else 'A'
+            self.display_winner(other_player)
+
+    def trigger_next_move(self):
+        print(f"Triggering next move for Player {self.current_player}. Player type: {self.playerA_selection.get() if self.current_player == 'A' else self.playerB_selection.get()}")  # Debug print statement
+        if self.playerA_selection.get() == "Computer" and self.current_player == "A":
+            print("Scheduling computer move for Player A")  # Debug print statement
+            self.root.after(500, self.computer_move)
+        elif self.playerB_selection.get() == "Computer" and self.current_player == "B":
+            print("Scheduling computer move for Player B")  # Debug print statement
+            self.root.after(500, self.computer_move)
+        # If both players are computers, continue the game without waiting
+        elif self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
+            print("Both players are computers. Continuing the game.")  # Debug print statement
+            self.root.after(500, self.computer_move)
+
 
     def log_message(self, message):
         self.log_display.insert(tk.END, message + "\n")
@@ -247,16 +278,12 @@ class IsolationGame:
 
             # Log the move
             self.log_message(f"Player {self.current_player} moved to ({row}, {column})")
-
-            # Check if the current player has any valid moves left after their move phase
-            valid_moves_after_move = self.get_valid_moves(row, column)
-            if not valid_moves_after_move:
-                self.display_winner(self.current_player)
         else:
             self.display_invalid_message("Invalid Move! Try again.")
             self.shake()
 
     def remove_cell(self, row, column):
+        print(f"Starting remove_cell for {row}, {column}")
         if (row, column) not in self.removed_tokens:
             if (row, column) != (self.players['A']['row'], self.players['A']['column']) and \
             (row, column) != (self.players['B']['row'], self.players['B']['column']):
@@ -275,7 +302,10 @@ class IsolationGame:
                 # Check for win condition after switching the player and removing the cell
                 valid_moves_for_new_current_player = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
                 if not valid_moves_for_new_current_player:
+                    print(f"Player {self.current_player} has no valid moves!")
                     self.display_winner(previous_player)
+                else:
+                    print(f"Player {self.current_player} has valid moves!")
 
             else:
                 self.display_invalid_message("Cannot remove a cell occupied by a player!")
@@ -323,23 +353,25 @@ class IsolationGame:
             self.root.after(3000, self.update_turn_labels)  # Clear the message after 3 seconds and revert to instruction
 
     def display_winner(self, winner):
-        """Display the winner in a separate popup window."""
-        print(f"Player {winner} wins!")  # Print the winner
-        self.canvas.unbind("<Button-1>")  # Unbind the canvas click event to prevent further interactions
+        if not self.game_over:  # Check if the game is already over
+            print(f"Player {winner} wins!")  # Print the winner
+            self.canvas.unbind("<Button-1>")  # Unbind the canvas click event to prevent further interactions
+            
+            # Create a new popup window
+            win_popup = tk.Toplevel(self.root)
+            win_popup.title("Game Over")
+            
+            label_text = f"Player {winner} wins!"
+            win_label = tk.Label(win_popup, text=label_text, font=("Arial", 24), fg="#000000")
+            win_label.pack(pady=20)
 
-        # Create a new popup window
-        win_popup = tk.Toplevel(self.root)
-        win_popup.title("Game Over")
-        
-        label_text = f"Player {winner} wins!"
-        win_label = tk.Label(win_popup, text=label_text, font=("Arial", 24), fg="#000000")
-        win_label.pack(pady=20)
-
-        close_button = tk.Button(win_popup, text="Close", command=win_popup.destroy)
-        close_button.pack(pady=10)
-        
-        # Center the popup window relative to the main game window
-        self.center_window(win_popup)
+            close_button = tk.Button(win_popup, text="Close", command=win_popup.destroy)
+            close_button.pack(pady=10)
+            
+            # Center the popup window relative to the main game window
+            self.center_window(win_popup)
+            
+            self.game_over = True  # Set the game_over flag to True
 
     def clear_invalid_move_message(self):
         """Clears the invalid move message after 3 seconds."""
@@ -359,6 +391,10 @@ class IsolationGame:
         self.draw_board()
         self.update_turn_labels()
         self.canvas.bind("<Button-1>", self.canvas_clicked)
+
+        # If both players are computers, start the game automatically
+        if self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
+            self.trigger_next_move()
 
     def restart_game(self):
         """Restart the game and re-enable the dropdowns."""
