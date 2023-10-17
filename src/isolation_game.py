@@ -112,6 +112,7 @@ class IsolationGame:
             self.players[self.current_player]['row'] = row
             self.players[self.current_player]['column'] = column
             self.switch_phase()
+            self.check_win_condition()
         else:
             self.invalid_move_label.config(text="Invalid Move! Try again.")
             self.shake()
@@ -120,7 +121,7 @@ class IsolationGame:
         print(f"Removing cell at ({row}, {column})")
         if (row, column) not in self.removed_tokens:
             if (row, column) != (self.players['A']['row'], self.players['A']['column']) and \
-               (row, column) != (self.players['B']['row'], self.players['B']['column']):
+            (row, column) != (self.players['B']['row'], self.players['B']['column']):
                 self.clear_cell(row, column)
                 x1 = column * self.cell_size
                 y1 = row * self.cell_size
@@ -128,7 +129,11 @@ class IsolationGame:
                 y2 = y1 + self.cell_size
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
                 self.removed_tokens.add((row, column))
-                self.switch_phase()
+                
+                # Check for win condition before switching phase and players
+                win_detected = self.check_win_condition()
+                if not win_detected:  # Only switch phase and players if the game hasn't ended
+                    self.switch_phase()
             else:
                 self.invalid_move_label.config(text="Cannot remove a cell occupied by a player!")
                 self.shake()
@@ -137,32 +142,63 @@ class IsolationGame:
             self.shake()
 
     def get_valid_moves(self, row, column):
-        print(f"Getting valid moves for pawn at ({row}, {column})")
+        """Get valid moves for the pawn at the given position."""
         directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]
         valid_moves = []
         for dr, dc in directions:
             new_row, new_column = row + dr, column + dc
-            if (0 <= new_row < self.rows and 
-                0 <= new_column < self.columns and 
+            if (0 <= new_row < 8 and 
+                0 <= new_column < 6 and 
                 (new_row, new_column) not in self.removed_tokens and
                 (new_row, new_column) != (self.players['A']['row'], self.players['A']['column']) and 
                 (new_row, new_column) != (self.players['B']['row'], self.players['B']['column'])):
                     valid_moves.append((new_row, new_column))
         return valid_moves
 
+
     def switch_player(self):
         print(f"Switching player. Current player: {self.current_player}")
         self.current_player = "A" if self.current_player == "B" else "B"
 
+    def check_win_condition(self):
+        """Check if the current player has won the game."""
+        # Get the opposing player
+        opposing_player = "A" if self.current_player == "B" else "B"
+
+        # Get valid moves for the opposing player
+        valid_moves = self.get_valid_moves(self.players[opposing_player]['row'], self.players[opposing_player]['column'])
+        print(f"Valid moves for player {opposing_player}: {valid_moves}")  # Debug print statement
+
+        # If the opposing player has no valid moves, the current player wins
+        if not valid_moves:
+            self.display_winner(self.current_player)
+            return True
+        return False
+
+
+    def display_winner(self, winner):
+        """Display the winner and disable further interactions."""
+        self.turn_label.config(text=f"Player {winner} wins!")
+        self.canvas.unbind("<Button-1>")  # Unbind the canvas click event to prevent further interactions
+
     def restart_game(self):
         print("Restarting game...")
+
+        # Reset the game state
+        self.players = {
+            "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
+            "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
+        }
+        self.removed_tokens.clear()
+        self.current_player = "A"
+        self.is_move_phase = True
+
         # Clear the canvas and redraw the board
         self.canvas.delete("all")
         self.draw_board()
-        self.current_player = "A"
-        self.is_move_phase = True
         self.turn_label.config(text=f"Player {self.current_player}'s Turn to Move")
         self.invalid_move_label.config(text="")
+
 
 def run_game():
     root = tk.Tk()
