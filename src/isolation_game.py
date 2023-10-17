@@ -17,6 +17,8 @@ class IsolationGame:
         self.initialize_game_state()
         self.setup_ui_components()
         self.draw_board()
+        self.center_window(self.root)
+
 
     def initialize_game_state(self):
         """Initialize or reset the game state."""
@@ -45,7 +47,6 @@ class IsolationGame:
 
         self.canvas = tk.Canvas(self.root, width=self.cell_size * self.columns, height=self.cell_size * self.rows)
         self.canvas.pack(pady=20)
-        self.canvas.bind("<Button-1>", self.canvas_clicked)
 
         # Player B's Frame (at the bottom)
         self.frame_B = tk.Frame(self.root)
@@ -64,9 +65,9 @@ class IsolationGame:
         # Then setup the player selection dropdowns
         self.setup_player_selection()
 
-        # Create the restart button
-        self.restart_button = tk.Button(self.root, text="Restart", command=self.restart_game)
-        self.restart_button.pack(pady=20)
+        # Start/Restart button
+        self.start_button = tk.Button(self.root, text="Start", command=self.start_game)
+        self.start_button.pack(pady=20)
 
         # Setting up the game legend last so it appears below everything else
         self.setup_legend()
@@ -117,12 +118,12 @@ class IsolationGame:
         instruction_text = "Choose a move" if self.is_move_phase else "Remove a token"
         
         if self.current_player == "A":
-            self.turn_label_A.config(text=f"Player A's Turn")
+            self.turn_label_A.config(text=f"Player A's Turn", fg="#27ae60")  # Setting the color to green
             self.turn_label_B.config(text="")
             self.invalid_move_label_A.config(text=instruction_text, fg="#2c3e50")
         else:
             self.turn_label_A.config(text="")
-            self.turn_label_B.config(text=f"Player B's Turn")
+            self.turn_label_B.config(text=f"Player B's Turn", fg="#27ae60")  # Setting the color to green
             self.invalid_move_label_B.config(text=instruction_text, fg="#2c3e50")
 
     def get_coordinates(self, row, column):
@@ -151,6 +152,15 @@ class IsolationGame:
         y2 = y1 + self.cell_size
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, tags=f"cell_{row}_{column}")
         self.canvas.create_text((x1 + x2) / 2, (y1 + y2) / 2, text=text, font=("Arial", 16), fill="white")
+
+    def center_window(self, window):
+        """Center the given window on the screen."""
+        window.update_idletasks()
+        width = window.winfo_width()
+        height = window.winfo_height()
+        x = (window.winfo_screenwidth() // 2) - (width // 2)
+        y = (window.winfo_screenheight() // 2) - (height // 2)
+        window.geometry(f"{width}x{height}+{x}+{y}")
 
     def shake(self):
         """
@@ -181,6 +191,7 @@ class IsolationGame:
     def switch_player(self):
         """Switch to the other player and start in the move phase."""
         self.current_player = "A" if self.current_player == "B" else "B"
+        print(f"Switched to Player {self.current_player}")  # Print the switched player
         self.is_move_phase = True  # Always start the new player's turn in the move phase
         self.update_turn_labels()
 
@@ -228,12 +239,15 @@ class IsolationGame:
                 x1, y1, x2, y2 = self.get_coordinates(row, column)
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
                 self.removed_tokens.add((row, column))
+                
+                # Switch to the other player
+                previous_player = self.current_player  # Remember the player who just finished their turn
                 self.switch_player()
-
+                
                 # Check for win condition after switching the player and removing the cell
-                valid_moves_for_opposing_player = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
-                if not valid_moves_for_opposing_player:
-                    self.display_winner(self.current_player)
+                valid_moves_for_new_current_player = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+                if not valid_moves_for_new_current_player:
+                    self.display_winner(previous_player)
 
             else:
                 self.display_invalid_message("Cannot remove a cell occupied by a player!")
@@ -241,6 +255,7 @@ class IsolationGame:
         else:
             self.display_invalid_message("Invalid Removal! Try another cell.")
             self.shake()
+
 
     def get_valid_moves(self, row, column):
         """Get valid moves for the pawn at the given position."""
@@ -281,33 +296,65 @@ class IsolationGame:
             self.root.after(3000, self.update_turn_labels)  # Clear the message after 3 seconds and revert to instruction
 
     def display_winner(self, winner):
-        """Display the winner and disable further interactions."""
-        if winner == "A":
-            self.turn_label_A.config(text=f"Player A wins!")
-            self.invalid_move_label_A.config(text="")
-        else:
-            self.turn_label_B.config(text=f"Player B wins!")
-            self.invalid_move_label_B.config(text="")
+        """Display the winner in a separate popup window."""
+        print(f"Player {winner} wins!")  # Print the winner
         self.canvas.unbind("<Button-1>")  # Unbind the canvas click event to prevent further interactions
+
+        # Create a new popup window
+        win_popup = tk.Toplevel(self.root)
+        win_popup.title("Game Over")
+        
+        label_text = f"Player {winner} wins!"
+        win_label = tk.Label(win_popup, text=label_text, font=("Arial", 24), fg="#000000")
+        win_label.pack(pady=20)
+
+        close_button = tk.Button(win_popup, text="Close", command=win_popup.destroy)
+        close_button.pack(pady=10)
+        
+        # Center the popup window relative to the main game window
+        self.center_window(win_popup)
 
     def clear_invalid_move_message(self):
         """Clears the invalid move message after 3 seconds."""
         self.invalid_move_label.config(text="")
 
-    def restart_game(self):
-        print("Restarting game...")
-        self.canvas.delete("all")
+    def start_game(self):
+        """Start or restart the game based on dropdown selections."""
+        # Lock the dropdowns to prevent changes during gameplay
+        self.playerA_dropdown.config(state=tk.DISABLED)
+        self.playerB_dropdown.config(state=tk.DISABLED)
+
+        # Change the "Start" button to "Restart"
+        self.start_button.config(text="Restart", command=self.restart_game)
+
+        # Initialize the game based on the dropdown selections
         self.initialize_game_state()
         self.draw_board()
         self.update_turn_labels()
+        self.canvas.bind("<Button-1>", self.canvas_clicked)
+
+    def restart_game(self):
+        """Restart the game and re-enable the dropdowns."""
+        print("Restarting game...")
+        self.canvas.delete("all")
+
+        # Re-enable the dropdowns
+        self.playerA_dropdown.config(state=tk.NORMAL)
+        self.playerB_dropdown.config(state=tk.NORMAL)
+
+        # Change the button back to "Start"
+        self.start_button.config(text="Start", command=self.start_game)
+
+        # Clear any previous invalid move messages
         self.invalid_move_label_A.config(text="")
         self.invalid_move_label_B.config(text="")
-        self.canvas.bind("<Button-1>", self.canvas_clicked)
-        
-        # Reset player selection dropdowns to default values
-        self.playerA_selection.set(self.player_types[0])
-        self.playerB_selection.set(self.player_types[0])
 
+        # Unbind the canvas click event to prevent interactions before starting
+        self.canvas.unbind("<Button-1>")
+
+        # Initialize the game state and redraw the board
+        self.initialize_game_state()
+        self.draw_board()
 
 def run_game():
     root = tk.Tk()
