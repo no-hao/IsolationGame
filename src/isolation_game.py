@@ -32,8 +32,16 @@ class IsolationGame:
     def setup_ui_components(self):
         """Set up the UI components."""
 
+        # Using a PanedWindow to split the canvas and the legend
+        self.paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        self.paned.pack(pady=20, fill=tk.BOTH, expand=1)
+
+        # Left Frame (for all the main UI elements)
+        self.left_frame = tk.Frame(self.paned)
+        self.paned.add(self.left_frame)
+
         # Player A's Frame (at the top)
-        self.frame_A = tk.Frame(self.root)
+        self.frame_A = tk.Frame(self.left_frame)
         self.frame_A.pack(fill=tk.BOTH)
 
         # Player A's turn label
@@ -44,11 +52,11 @@ class IsolationGame:
         self.invalid_move_label_A = tk.Label(self.frame_A, text="", font=("Arial", 10), fg="#c0392b")
         self.invalid_move_label_A.pack(pady=5)
 
-        self.canvas = tk.Canvas(self.root, width=self.cell_size * self.columns, height=self.cell_size * self.rows)
+        self.canvas = tk.Canvas(self.left_frame, width=self.cell_size * self.columns, height=self.cell_size * self.rows)
         self.canvas.pack(pady=20)
 
         # Player B's Frame (at the bottom)
-        self.frame_B = tk.Frame(self.root)
+        self.frame_B = tk.Frame(self.left_frame)
         self.frame_B.pack(fill=tk.BOTH)
 
         # Player B's turn label
@@ -64,22 +72,22 @@ class IsolationGame:
         # Then setup the player selection dropdowns
         self.setup_player_selection()
 
-        # Start/Restart button
-        self.start_button = tk.Button(self.root, text="Start", command=self.start_game, font=("Arial", 20, 'bold'), bg="#2ecc71", fg="white", padx=20, pady=10, relief=tk.GROOVE, bd=3)
-        self.start_button.pack(pady=30)
+        # Start/Restart button (moved to bottom of left_frame)
+        self.start_button = tk.Button(self.left_frame, text="Start", command=self.start_game, font=("Arial", 20, 'bold'), bg="#323232", fg="black", padx=20, pady=10, relief=tk.GROOVE, bd=3)
+        self.start_button.pack(pady=20)
 
-
-        # Add a separator line
-        self.separator = tk.Frame(self.root, height=1, bg='grey')
-        self.separator.pack(fill=tk.X, pady=10)
-
-        # Setting up the game legend last so it appears below everything else
+        # Setting up the game legend
         self.setup_legend()
 
     def setup_legend(self):
         """Set up the game legend."""
-        self.legend_frame = tk.Frame(self.root)
-        self.legend_frame.pack(pady=10)
+        # Right Frame (for the legend)
+        self.right_frame = tk.Frame(self.paned, bg=self.root.cget('bg'))
+        self.paned.add(self.right_frame)
+
+        # Spacer frame to align the legend with the game board
+        spacer_frame = tk.Frame(self.right_frame, bg=self.root.cget('bg'), height=128)  # Adjust height as needed
+        spacer_frame.pack(fill=tk.BOTH)
 
         legends = [
             ("#bdc3c7", "Available Cell"),
@@ -89,11 +97,18 @@ class IsolationGame:
         ]
 
         for color, text in legends:
-            legend_cell_frame = tk.Frame(self.legend_frame, bg=color, width=self.cell_size, height=self.cell_size)
-            legend_cell_frame.pack(side=tk.LEFT, padx=10)
+            legend_item_frame = tk.Frame(self.right_frame, bg=self.root.cget('bg'), padx=10, pady=5)
+            legend_item_frame.pack(fill=tk.BOTH, padx=10, pady=5, anchor=tk.N)
 
-            label = tk.Label(legend_cell_frame, text=text, bg=color)
-            label.pack(side=tk.RIGHT, padx=5)
+            legend_cell_frame = tk.Frame(legend_item_frame, bg=color, width=self.cell_size, height=self.cell_size)
+            legend_cell_frame.pack(side=tk.LEFT, padx=5)
+
+            label = tk.Label(legend_item_frame, text=text, bg=self.root.cget('bg'))
+            label.pack(side=tk.LEFT, padx=5)
+
+        # After setting up the legend items
+        self.log_display = tk.Text(self.right_frame, height=25, width=35, bg="white", wrap=tk.WORD, borderwidth=2, relief=tk.GROOVE)
+        self.log_display.pack(pady=10, padx=10)
 
     def setup_player_selection(self):
         """Set up the player selection dropdowns."""
@@ -142,7 +157,7 @@ class IsolationGame:
         for row in range(self.rows):
             for column in range(self.columns):
                 x1, y1, x2, y2 = self.get_coordinates(row, column)
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill="#bdc3c7", tags=f"cell_{row}_{column}")
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill="#bdc3c7", tags=f"cell_{row}_{column}", width=2, outline="#9b9b9b")
 
         self.place_pawn(self.players['A']['row'], self.players['A']['column'], self.players['A']['color'],
                         self.players['A']['text'])
@@ -216,6 +231,9 @@ class IsolationGame:
         else:
             self.remove_cell(row, column)
 
+    def log_message(self, message):
+        self.log_display.insert(tk.END, message + "\n")
+        self.log_display.see(tk.END)  # Ensure the latest message is visible
 
     def cell_clicked(self, row, column):
         valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
@@ -226,7 +244,10 @@ class IsolationGame:
             self.players[self.current_player]['row'] = row
             self.players[self.current_player]['column'] = column
             self.switch_phase()
-            
+
+            # Log the move
+            self.log_message(f"Player {self.current_player} moved to ({row}, {column})")
+
             # Check if the current player has any valid moves left after their move phase
             valid_moves_after_move = self.get_valid_moves(row, column)
             if not valid_moves_after_move:
@@ -243,11 +264,14 @@ class IsolationGame:
                 x1, y1, x2, y2 = self.get_coordinates(row, column)
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
                 self.removed_tokens.add((row, column))
-                
+
+                # Log the cell removal
+                self.log_message(f"Player {self.current_player} removed cell at ({row}, {column})")
+
                 # Switch to the other player
                 previous_player = self.current_player  # Remember the player who just finished their turn
                 self.switch_player()
-                
+
                 # Check for win condition after switching the player and removing the cell
                 valid_moves_for_new_current_player = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
                 if not valid_moves_for_new_current_player:
@@ -259,7 +283,6 @@ class IsolationGame:
         else:
             self.display_invalid_message("Invalid Removal! Try another cell.")
             self.shake()
-
 
     def get_valid_moves(self, row, column):
         """Get valid moves for the pawn at the given position."""
