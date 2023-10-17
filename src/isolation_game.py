@@ -49,20 +49,68 @@ class IsolationGame:
 
         # Player B's Frame (at the bottom)
         self.frame_B = tk.Frame(self.root)
-        self.frame_B.pack(fill=tk.BOTH, side=tk.BOTTOM)
+        self.frame_B.pack(fill=tk.BOTH)
 
         # Player B's turn label
         self.turn_label_B = tk.Label(self.frame_B, text="", font=("Arial", 16))
-        self.turn_label_B.pack(side=tk.BOTTOM)
+        self.turn_label_B.pack(side=tk.TOP)
 
         # Invalid move message for Player B
         self.invalid_move_label_B = tk.Label(self.frame_B, text="", font=("Arial", 10), fg="#c0392b")
-        self.invalid_move_label_B.pack(side=tk.BOTTOM, pady=5)
+        self.invalid_move_label_B.pack(side=tk.TOP, pady=5)
 
         self.update_turn_labels()
 
+        # Then setup the player selection dropdowns
+        self.setup_player_selection()
+
+        # Create the restart button
         self.restart_button = tk.Button(self.root, text="Restart", command=self.restart_game)
         self.restart_button.pack(pady=20)
+
+        # Setting up the game legend last so it appears below everything else
+        self.setup_legend()
+
+    def setup_legend(self):
+        """Set up the game legend."""
+        self.legend_frame = tk.Frame(self.root)
+        self.legend_frame.pack(pady=10)
+
+        legends = [
+            ("#bdc3c7", "Available Cell"),
+            (self.players['A']['color'], "Player A Pawn"),
+            (self.players['B']['color'], "Player B Pawn"),
+            (self.removed_cell_color, "Removed Cell")
+        ]
+
+        for color, text in legends:
+            legend_cell_frame = tk.Frame(self.legend_frame, bg=color, width=self.cell_size, height=self.cell_size)
+            legend_cell_frame.pack(side=tk.LEFT, padx=10)
+
+            label = tk.Label(legend_cell_frame, text=text, bg=color)
+            label.pack(side=tk.RIGHT, padx=5)
+
+    def setup_player_selection(self):
+        """Set up the player selection dropdowns."""
+        self.player_types = ["Human", "Computer"]
+
+        # Player A Selection
+        self.playerA_label = tk.Label(self.frame_A, text="Player A:", font=("Arial", 12))
+        self.playerA_label.pack(pady=5)
+
+        self.playerA_selection = tk.StringVar(self.frame_A)
+        self.playerA_selection.set(self.player_types[0])  # default value
+        self.playerA_dropdown = tk.OptionMenu(self.frame_A, self.playerA_selection, *self.player_types)
+        self.playerA_dropdown.pack(pady=5)
+
+        # Player B Selection
+        self.playerB_label = tk.Label(self.frame_B, text="Player B:", font=("Arial", 12))
+        self.playerB_label.pack(pady=5)  # Pack the label first
+
+        self.playerB_selection = tk.StringVar(self.frame_B)
+        self.playerB_selection.set(self.player_types[0])  # default value
+        self.playerB_dropdown = tk.OptionMenu(self.frame_B, self.playerB_selection, *self.player_types)
+        self.playerB_dropdown.pack(pady=5)  # Then pack the dropdown
 
     def update_turn_labels(self):
         """Update turn labels based on the current player and phase."""
@@ -141,10 +189,18 @@ class IsolationGame:
         column = event.x // self.cell_size
         row = event.y // self.cell_size
 
+        if self.playerA_selection.get() == "Computer" and self.current_player == "A":
+            print("Player A (Computer) will make a move.")
+            return
+        if self.playerB_selection.get() == "Computer" and self.current_player == "B":
+            print("Player B (Computer) will make a move.")
+            return
+
         if self.is_move_phase:
             self.cell_clicked(row, column)
         else:
             self.remove_cell(row, column)
+
 
     def cell_clicked(self, row, column):
         valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
@@ -247,6 +303,10 @@ class IsolationGame:
         self.invalid_move_label_A.config(text="")
         self.invalid_move_label_B.config(text="")
         self.canvas.bind("<Button-1>", self.canvas_clicked)
+        
+        # Reset player selection dropdowns to default values
+        self.playerA_selection.set(self.player_types[0])
+        self.playerB_selection.set(self.player_types[0])
 
 
 def run_game():
