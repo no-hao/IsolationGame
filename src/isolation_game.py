@@ -15,7 +15,7 @@ class IsolationGame:
         self.removed_cell_color = "#323232"
 
         # Initialize game state
-        self.current_player = "A"
+        self.current_player = choice(["A", "B"])  # Randomly choose starting player
         self.players = {
             "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
             "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
@@ -38,6 +38,7 @@ class IsolationGame:
         self.restart_button.pack(pady=20)
 
         self.draw_board()
+
 
     def draw_board(self):
         print("Drawing the board...")
