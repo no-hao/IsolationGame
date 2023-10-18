@@ -22,6 +22,7 @@ class IsolationGame:
     def initialize_game_state(self):
         """Initialize or reset the game state."""
         self.current_player = random.choice(["A", "B"])
+        print(f"[DEBUG] Initializing game. Starting player: {self.current_player}")  # New debug print
         self.players = {
             "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
             "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
@@ -214,7 +215,7 @@ class IsolationGame:
     def switch_player(self):
         """Switch to the other player and start in the move phase."""
         self.current_player = "A" if self.current_player == "B" else "B"
-        print(f"Switched to Player {self.current_player}")  # Print the switched player
+        print(f"[DEBUG] Switched to Player {self.current_player}")  # Enhanced debug print
         self.is_move_phase = True  # Always start the new player's turn in the move phase
         self.update_turn_labels()
         self.trigger_next_move()
@@ -247,9 +248,9 @@ class IsolationGame:
                 best_move = move
 
         print(f"[DEBUG] Best move determined for Player {self.current_player}: {best_move} with score {best_score}")  # New print statement
-        
+
         if best_move:
-            print(f"[DEBUG] Triggering cell_clicked function for move: {best_move}")  # New print statement
+            print(f"[DEBUG] Triggering cell_clicked function for move: {best_move}")  # New debug print
             self.cell_clicked(*best_move)
         else:
             other_player = 'B' if self.current_player == 'A' else 'A'
@@ -297,21 +298,21 @@ class IsolationGame:
 
         # If a best cell to remove has been found, remove it
         if best_cell:
+            print(f"[DEBUG] Triggering remove_cell function for cell: {best_cell}")  # New debug print
             self.remove_cell(*best_cell)
         else:
-            print("No cells left to remove!")
+            print("[DEBUG] No cells left to remove!")
 
     def trigger_next_move(self):
-        print(f"Triggering next move for Player {self.current_player}. Player type: {self.playerA_selection.get() if self.current_player == 'A' else self.playerB_selection.get()}")  # Debug print statement
+        print(f"[DEBUG] Triggering next move for Player {self.current_player}. Player type: {self.playerA_selection.get() if self.current_player == 'A' else self.playerB_selection.get()}")  # Debug print statement
         if self.playerA_selection.get() == "Computer" and self.current_player == "A":
-            print("Scheduling computer move for Player A")  # Debug print statement
+            print("[DEBUG] Scheduling computer move for Player A")  # Debug print statement
             self.root.after(500, self.computer_move)
         elif self.playerB_selection.get() == "Computer" and self.current_player == "B":
-            print("Scheduling computer move for Player B")  # Debug print statement
+            print("[DEBUG] Scheduling computer move for Player B")  # Debug print statement
             self.root.after(500, self.computer_move)
-        # If both players are computers, continue the game without waiting
         elif self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
-            print("Both players are computers. Continuing the game.")  # Debug print statement
+            print("[DEBUG] Both players are computers. Continuing the game.")  # Debug print statement
             self.root.after(500, self.computer_move)
 
     def log_message(self, message):
@@ -543,7 +544,7 @@ class IsolationGame:
 
     def restart_game(self):
         """Restart the game and re-enable the dropdowns."""
-        print("Restarting game...")
+        print("[DEBUG] Restarting game...")  # Debug print statement
         self.canvas.delete("all")
 
         # Re-enable the dropdowns
