@@ -10,6 +10,8 @@ class IsolationGame:
         self.rows = 8
         self.columns = 6
         self.cell_size = 50
+        self.depth = 3  # or whatever depth you want to use for minimax
+
 
         # Colors
         self.removed_cell_color = "#323232"
@@ -208,17 +210,24 @@ class IsolationGame:
         """Switch between move and remove phases."""
         self.is_move_phase = not self.is_move_phase
         self.update_turn_labels()
-        
-        # If the computer needs to act (either move or remove), trigger its action
-        self.trigger_computer_action()
+
+        if self.is_move_phase:
+            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
+                self.computer_move()
+        else:
+            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
+                self.computer_remove()
 
     def switch_player(self):
         """Switch to the other player and start in the move phase."""
-        self.current_player = "A" if self.current_player == "B" else "B"
-        print(f"[DEBUG] Switched to Player {self.current_player}")  # Enhanced debug print
-        self.is_move_phase = True  # Always start the new player's turn in the move phase
-        self.update_turn_labels()
-        self.trigger_next_move()
+        if not self.game_over:  # Check if the game is already over
+            self.current_player = "A" if self.current_player == "B" else "B"
+            print(f"[DEBUG] Switched to Player {self.current_player}")  # Enhanced debug print
+            self.is_move_phase = True  # Always start the new player's turn in the move phase
+            self.update_turn_labels()
+            if not self.check_for_tie():  # Check for a tie before triggering the next move
+                self.check_win_condition()
+                self.trigger_next_move()
 
     def canvas_clicked(self, event):
         print(f"Canvas clicked at coordinates: {event.x}, {event.y}")
@@ -231,39 +240,15 @@ class IsolationGame:
             self.remove_cell(row, column)
 
     def computer_move(self):
-        """Generate and apply a move using the Minimax algorithm for the computer."""
-        best_score = float('-inf') if self.current_player == "A" else float('inf')
-        best_move = None
-
-        for move in self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column']):
-            original_position = (self.players[self.current_player]['row'], self.players[self.current_player]['column'])
-            self.simulate_move(*move)
-            score = self.minimax(2, self.current_player, float('-inf'), float('inf'))
-            self.undo_move(*original_position)
-            if self.current_player == "A" and score > best_score:
-                best_score = score
-                best_move = move
-            elif self.current_player == "B" and score < best_score:
-                best_score = score
-                best_move = move
-
-        print(f"[DEBUG] Best move determined for Player {self.current_player}: {best_move} with score {best_score}")  # New print statement
-
+        best_move = self.minimax_move()  # Get the best move using minimax.
+        
         if best_move:
-            print(f"[DEBUG] Triggering cell_clicked function for move: {best_move}")  # New debug print
-            self.cell_clicked(*best_move)
+            self.cell_clicked(*best_move)  # Apply the best move.
+            # Log the move
+            self.log_message(f"Computer {self.current_player} moved to {best_move}")
         else:
-            other_player = 'B' if self.current_player == 'A' else 'A'
-            self.display_winner(other_player)
-
-    def trigger_computer_action(self):
-        """Triggers the computer's move or removal based on the phase."""
-        if self.is_move_phase:
-            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
-                self.root.after(500, self.computer_move)
-        else:
-            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
-                self.root.after(500, self.computer_remove)
+            # No valid move for the computer, so switch to the next player
+            self.switch_player()
 
     def computer_remove(self):
         """Generate and apply a removal action for the computer using the future_mobility_heuristic."""
@@ -304,16 +289,10 @@ class IsolationGame:
             print("[DEBUG] No cells left to remove!")
 
     def trigger_next_move(self):
-        print(f"[DEBUG] Triggering next move for Player {self.current_player}. Player type: {self.playerA_selection.get() if self.current_player == 'A' else self.playerB_selection.get()}")  # Debug print statement
         if self.playerA_selection.get() == "Computer" and self.current_player == "A":
-            print("[DEBUG] Scheduling computer move for Player A")  # Debug print statement
-            self.root.after(500, self.computer_move)
+            self.computer_move()
         elif self.playerB_selection.get() == "Computer" and self.current_player == "B":
-            print("[DEBUG] Scheduling computer move for Player B")  # Debug print statement
-            self.root.after(500, self.computer_move)
-        elif self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
-            print("[DEBUG] Both players are computers. Continuing the game.")  # Debug print statement
-            self.root.after(500, self.computer_move)
+            self.computer_move()
 
     def log_message(self, message):
         self.log_display.insert(tk.END, message + "\n")
@@ -321,22 +300,19 @@ class IsolationGame:
 
     def cell_clicked(self, row, column):
         valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
-
         if (row, column) in valid_moves:
             self.clear_cell(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
             self.place_pawn(row, column, self.players[self.current_player]['color'], self.players[self.current_player]['text'])
             self.players[self.current_player]['row'] = row
             self.players[self.current_player]['column'] = column
             self.switch_phase()
-
-            # Log the move
             self.log_message(f"Player {self.current_player} moved to ({row}, {column})")
         else:
             self.display_invalid_message("Invalid Move! Try again.")
             self.shake()
 
     def remove_cell(self, row, column):
-        print(f"Starting remove_cell for {row}, {column}")
+        print(f"[DEBUG] Starting remove_cell for {row}, {column}")
         if (row, column) not in self.removed_tokens:
             if (row, column) != (self.players['A']['row'], self.players['A']['column']) and \
             (row, column) != (self.players['B']['row'], self.players['B']['column']):
@@ -344,22 +320,9 @@ class IsolationGame:
                 x1, y1, x2, y2 = self.get_coordinates(row, column)
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
                 self.removed_tokens.add((row, column))
-
-                # Log the cell removal
                 self.log_message(f"Player {self.current_player} removed cell at ({row}, {column})")
-
-                # Switch to the other player
-                previous_player = self.current_player  # Remember the player who just finished their turn
+                self.switch_phase()
                 self.switch_player()
-
-                # Check for win condition after switching the player and removing the cell
-                valid_moves_for_new_current_player = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
-                if not valid_moves_for_new_current_player:
-                    print(f"Player {self.current_player} has no valid moves!")
-                    self.display_winner(previous_player)
-                else:
-                    print(f"Player {self.current_player} has valid moves!")
-
             else:
                 self.display_invalid_message("Cannot remove a cell occupied by a player!")
                 self.shake()
@@ -381,42 +344,82 @@ class IsolationGame:
                     valid_moves.append((new_row, new_column))
         return valid_moves
 
-    def minimax(self, depth, player, alpha, beta):
-        """The basic Minimax algorithm to evaluate moves with debug print."""
-        if depth == 0 or self.game_over:
-            heuristic_value = self.heuristic(player)
-            print(f"[DEBUG] Depth: {depth}, Player: {player}, Score: {heuristic_value}")  # Debug print statement
-            return heuristic_value
+    def minimax(self, depth, alpha, beta, is_maximizing_player):
+        print(f"[DEBUG] Minimax - Depth: {depth}, Player: {self.current_player}, Is Maximizing: {is_maximizing_player}")  # New debug print
+        if depth == 0 or self.is_terminal_state(self.current_player):
+            heuristic_val = self.heuristic(self.current_player)
+            print(f"[DEBUG] Depth: {depth}, Heuristic: {heuristic_val}")  # Debug statement
+            return heuristic_val
 
-        is_maximizing_player = player == self.current_player
-        print(f"[DEBUG] Depth: {depth}, Player: {player}, Is Maximizing: {is_maximizing_player}")  # Debug print statement
+        valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+        if not valid_moves:
+            heuristic_val = self.heuristic(self.current_player)
+            print(f"No valid moves, Heuristic: {heuristic_val}")
+            return heuristic_val
 
         if is_maximizing_player:
-            maxEval = float('-inf')
-            for move in self.get_valid_moves(self.players[player]['row'], self.players[player]['column']):
-                original_position = (self.players[player]['row'], self.players[player]['column'])
+            max_eval = float('-inf')
+            for move in valid_moves:
+                prev_row, prev_column = self.players[self.current_player]['row'], self.players[self.current_player]['column']
                 self.simulate_move(*move)
-                eval = self.minimax(depth - 1, "B" if player == "A" else "A", alpha, beta)
-                self.undo_move(*original_position)
-                print(f"[DEBUG] Considering Move: {move}, Eval: {eval}")  # Debug print statement
-                maxEval = max(maxEval, eval)
+                eval = self.minimax(depth - 1, alpha, beta, False)
+                self.undo_simulated_move(prev_row, prev_column)  # Correct undo function
+                print(f"[DEBUG] Undoing move {move} for maximizing player")  # New debug print
+                max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-            return maxEval
+            print(f"Maximizing Player Eval: {max_eval}")
+            return max_eval
         else:
-            minEval = float('inf')
-            for move in self.get_valid_moves(self.players[player]['row'], self.players[player]['column']):
-                original_position = (self.players[player]['row'], self.players[player]['column'])
+            min_eval = float('inf')
+            for move in valid_moves:
+                prev_row, prev_column = self.players[self.current_player]['row'], self.players[self.current_player]['column']
                 self.simulate_move(*move)
-                eval = self.minimax(depth - 1, "B" if player == "A" else "A", alpha, beta)
-                self.undo_move(*original_position)
-                print(f"[DEBUG] Considering Move: {move}, Eval: {eval}")  # Debug print statement
-                minEval = min(minEval, eval)
+                eval = self.minimax(depth - 1, alpha, beta, True)
+                self.undo_simulated_move(prev_row, prev_column)  # Correct undo function
+                print(f"[DEBUG] Undoing move {move} for minimizing player")  # New debug print
+                min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
-            return minEval
+            print(f"Minimizing Player Eval: {min_eval}")
+            return min_eval
+
+    def minimax_move(self):
+        best_move = None
+        best_value = float('-inf') if self.current_player == 'A' else float('inf')
+
+        valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+        print(f"[DEBUG] Valid moves for minimax_move: {valid_moves}")  # New debug print
+        for move in valid_moves:
+            prev_row, prev_column = self.players[self.current_player]['row'], self.players[self.current_player]['column']
+            self.simulate_move(*move)
+            move_value = self.minimax(self.depth, float('-inf'), float('inf'), self.current_player == 'B')
+            self.undo_simulated_move(prev_row, prev_column)
+
+            if self.current_player == 'A' and move_value > best_value:
+                best_value = move_value
+                best_move = move
+            elif self.current_player == 'B' and move_value < best_value:
+                best_value = move_value
+                best_move = move
+
+        print(f"[DEBUG] Best move for player {self.current_player}: {best_move}, Best value: {best_value}")
+        return best_move
+
+    def is_terminal_state(self, player):
+        """Check if the provided player is in a terminal state (no valid moves)."""
+        valid_moves = self.get_valid_moves(self.players[player]['row'], self.players[player]['column'])
+        return not valid_moves
+
+    # Handle ties
+    def check_for_tie(self):
+        """Check if the game is a tie and handle the tie condition."""
+        if len(self.removed_tokens) == (self.rows * self.columns) - 2:
+            self.display_winner("Tie")
+            return True
+        return False
 
     def heuristic(self, player):
         """Evaluate the board state."""
@@ -465,27 +468,58 @@ class IsolationGame:
 
 
     def simulate_move(self, row, column):
-        """Simulates a move without updating the GUI."""
+        """
+        Simulates a move without updating the GUI.
+        """
+        print(f"[DEBUG] Simulating move for Player {self.current_player} to {row}, {column}")  # New debug print
         self.players[self.current_player]['row'] = row
         self.players[self.current_player]['column'] = column
 
-    def undo_move(self, row, column):
-        """Undoes a simulated move."""
-        self.players[self.current_player]['row'] = row
-        self.players[self.current_player]['column'] = column
-    
+    def undo_simulated_move(self, prev_row, prev_column):
+        """
+        Undoes a simulated move.
+        """
+        print(f"[DEBUG] Undoing simulated move for Player {self.current_player} back to {prev_row}, {prev_column}")  # New debug print
+        self.players[self.current_player]['row'] = prev_row
+        self.players[self.current_player]['column'] = prev_column
+
+    def simulate_remove_cell(self, row, column):
+        """
+        Simulated version of remove_cell without GUI updates.
+        """
+        print(f"[DEBUG] Simulating removal of cell at {row}, {column}")  # New debug print
+        if (row, column) not in self.removed_tokens:
+            if (row, column) != (self.players['A']['row'], self.players['A']['column']) and \
+            (row, column) != (self.players['B']['row'], self.players['B']['column']):
+                self.removed_tokens.add((row, column))
+            else:
+                return False
+        else:
+            return False
+        return True  # Successfully removed
+
+    def undo_remove_cell(self, row, column):
+        """
+        Undoes a simulated removal of a cell.
+        """
+        print(f"[DEBUG] Undoing simulated removal of cell at {row}, {column}")  # New debug print
+        if (row, column) in self.removed_tokens:
+            self.removed_tokens.remove((row, column))
+        else:
+            print(f"[DEBUG] Tried to undo a non-removed cell at {row}, {column}")  # Debug statement
+
     def check_win_condition(self):
         """Check if the current player has won the game."""
         # Get the opposing player
         opposing_player = "A" if self.current_player == "B" else "B"
 
-        # Get valid moves for the opposing player
-        valid_moves = self.get_valid_moves(self.players[opposing_player]['row'], self.players[opposing_player]['column'])
-        print(f"Valid moves for player {opposing_player}: {valid_moves}")  # Debug print statement
+        # Get valid moves for the current player
+        valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+        print(f"Valid moves for player {self.current_player}: {valid_moves}")  # Debug print statement
 
-        # If the opposing player has no valid moves, the current player wins
+        # If the current player has no valid moves, the opposing player wins
         if not valid_moves:
-            self.display_winner(self.current_player)
+            self.display_winner(opposing_player)
             return True
         return False
 
@@ -499,6 +533,7 @@ class IsolationGame:
             self.root.after(3000, self.update_turn_labels)  # Clear the message after 3 seconds and revert to instruction
 
     def display_winner(self, winner):
+        """Display the winner of the game and end the game."""
         if not self.game_over:  # Check if the game is already over
             print(f"Player {winner} wins!")  # Print the winner
             self.canvas.unbind("<Button-1>")  # Unbind the canvas click event to prevent further interactions
@@ -519,12 +554,14 @@ class IsolationGame:
             
             self.game_over = True  # Set the game_over flag to True
 
+
     def clear_invalid_move_message(self):
         """Clears the invalid move message after 3 seconds."""
         self.invalid_move_label.config(text="")
 
     def start_game(self):
         """Start or restart the game based on dropdown selections."""
+        print("[DEBUG] Starting game...")  # Debug statement
         # Lock the dropdowns to prevent changes during gameplay
         self.playerA_dropdown.config(state=tk.DISABLED)
         self.playerB_dropdown.config(state=tk.DISABLED)
@@ -561,9 +598,10 @@ class IsolationGame:
         # Unbind the canvas click event to prevent interactions before starting
         self.canvas.unbind("<Button-1>")
 
-        # Initialize the game state and redraw the board
+        # Initialize the game based on the dropdown selections
         self.initialize_game_state()
         self.draw_board()
+        self.update_turn_labels()
 
 def run_game():
     root = tk.Tk()
