@@ -207,6 +207,9 @@ class IsolationGame:
         """Switch between move and remove phases."""
         self.is_move_phase = not self.is_move_phase
         self.update_turn_labels()
+        
+        # If the computer needs to act (either move or remove), trigger its action
+        self.trigger_computer_action()
 
     def switch_player(self):
         """Switch to the other player and start in the move phase."""
@@ -227,26 +230,76 @@ class IsolationGame:
             self.remove_cell(row, column)
 
     def computer_move(self):
-        """Generate and apply a random valid move for the computer."""
-        valid_moves = self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column'])
-        move = random.choice(valid_moves) if valid_moves else None
-        if move:
-            self.cell_clicked(*move)
+        """Generate and apply a move using the Minimax algorithm for the computer."""
+        best_score = float('-inf') if self.current_player == "A" else float('inf')
+        best_move = None
 
-            # After making a move, AI should remove a cell
-            if not self.is_move_phase:  # Ensure we're in the remove phase
-                valid_remove_cells = [
-                    (r, c) for r in range(self.rows) for c in range(self.columns)
-                    if (r, c) not in self.removed_tokens and
-                    (r, c) != (self.players['A']['row'], self.players['A']['column']) and 
-                    (r, c) != (self.players['B']['row'], self.players['B']['column'])
-                ]
-                remove_cell = random.choice(valid_remove_cells) if valid_remove_cells else None
-                if remove_cell:
-                    self.remove_cell(*remove_cell)
-        else:  # If AI has no valid moves, the other player wins
+        for move in self.get_valid_moves(self.players[self.current_player]['row'], self.players[self.current_player]['column']):
+            original_position = (self.players[self.current_player]['row'], self.players[self.current_player]['column'])
+            self.simulate_move(*move)
+            score = self.minimax(2, self.current_player, float('-inf'), float('inf'))
+            self.undo_move(*original_position)
+            if self.current_player == "A" and score > best_score:
+                best_score = score
+                best_move = move
+            elif self.current_player == "B" and score < best_score:
+                best_score = score
+                best_move = move
+
+        print(f"[DEBUG] Best move determined for Player {self.current_player}: {best_move} with score {best_score}")  # New print statement
+        
+        if best_move:
+            print(f"[DEBUG] Triggering cell_clicked function for move: {best_move}")  # New print statement
+            self.cell_clicked(*best_move)
+        else:
             other_player = 'B' if self.current_player == 'A' else 'A'
             self.display_winner(other_player)
+
+    def trigger_computer_action(self):
+        """Triggers the computer's move or removal based on the phase."""
+        if self.is_move_phase:
+            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
+                self.root.after(500, self.computer_move)
+        else:
+            if (self.playerA_selection.get() == "Computer" and self.current_player == "A") or (self.playerB_selection.get() == "Computer" and self.current_player == "B"):
+                self.root.after(500, self.computer_remove)
+
+    def computer_remove(self):
+        """Generate and apply a removal action for the computer using the future_mobility_heuristic."""
+        opposing_player = "A" if self.current_player == "B" else "B"
+
+        available_cells = [
+            (i, j) for i in range(self.rows) for j in range(self.columns) 
+            if (i, j) not in self.removed_tokens 
+            and (i, j) != (self.players['A']['row'], self.players['A']['column']) 
+            and (i, j) != (self.players['B']['row'], self.players['B']['column'])
+        ]
+
+        best_cell = None
+        best_future_mobility_reduction = float('-inf')
+
+        for cell in available_cells:
+            row, column = cell
+            # Simulate removing the cell
+            self.removed_tokens.add(cell)
+
+            # Calculate the reduction in future mobility for the opposing player
+            future_mobility_after_removal = self.future_mobility_with_centrality(opposing_player)
+            mobility_reduction = len(self.get_valid_moves(self.players[opposing_player]['row'], self.players[opposing_player]['column'])) - future_mobility_after_removal
+
+            # If this cell causes a higher reduction in future mobility, update best_cell
+            if mobility_reduction > best_future_mobility_reduction:
+                best_future_mobility_reduction = mobility_reduction
+                best_cell = cell
+
+            # Undo the simulated removal
+            self.removed_tokens.remove(cell)
+
+        # If a best cell to remove has been found, remove it
+        if best_cell:
+            self.remove_cell(*best_cell)
+        else:
+            print("No cells left to remove!")
 
     def trigger_next_move(self):
         print(f"Triggering next move for Player {self.current_player}. Player type: {self.playerA_selection.get() if self.current_player == 'A' else self.playerB_selection.get()}")  # Debug print statement
@@ -260,7 +313,6 @@ class IsolationGame:
         elif self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
             print("Both players are computers. Continuing the game.")  # Debug print statement
             self.root.after(500, self.computer_move)
-
 
     def log_message(self, message):
         self.log_display.insert(tk.END, message + "\n")
@@ -328,6 +380,99 @@ class IsolationGame:
                     valid_moves.append((new_row, new_column))
         return valid_moves
 
+    def minimax(self, depth, player, alpha, beta):
+        """The basic Minimax algorithm to evaluate moves with debug print."""
+        if depth == 0 or self.game_over:
+            heuristic_value = self.heuristic(player)
+            print(f"[DEBUG] Depth: {depth}, Player: {player}, Score: {heuristic_value}")  # Debug print statement
+            return heuristic_value
+
+        is_maximizing_player = player == self.current_player
+        print(f"[DEBUG] Depth: {depth}, Player: {player}, Is Maximizing: {is_maximizing_player}")  # Debug print statement
+
+        if is_maximizing_player:
+            maxEval = float('-inf')
+            for move in self.get_valid_moves(self.players[player]['row'], self.players[player]['column']):
+                original_position = (self.players[player]['row'], self.players[player]['column'])
+                self.simulate_move(*move)
+                eval = self.minimax(depth - 1, "B" if player == "A" else "A", alpha, beta)
+                self.undo_move(*original_position)
+                print(f"[DEBUG] Considering Move: {move}, Eval: {eval}")  # Debug print statement
+                maxEval = max(maxEval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            return maxEval
+        else:
+            minEval = float('inf')
+            for move in self.get_valid_moves(self.players[player]['row'], self.players[player]['column']):
+                original_position = (self.players[player]['row'], self.players[player]['column'])
+                self.simulate_move(*move)
+                eval = self.minimax(depth - 1, "B" if player == "A" else "A", alpha, beta)
+                self.undo_move(*original_position)
+                print(f"[DEBUG] Considering Move: {move}, Eval: {eval}")  # Debug print statement
+                minEval = min(minEval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+            return minEval
+
+    def heuristic(self, player):
+        """Evaluate the board state."""
+        immediate_value = len(self.get_valid_moves(self.players[player]['row'], self.players[player]['column'])) - \
+                        len(self.get_valid_moves(self.players["B" if player == "A" else "A"]['row'],
+                                                self.players["B" if player == "A" else "A"]['column']))
+
+        future_value = self.future_mobility_with_centrality(player)
+
+        weight_immediate = 1.0
+        weight_future = 0.5
+
+        heuristic_value = weight_immediate * immediate_value + weight_future * future_value
+        print(f"[DEBUG] Heuristic Value for Player {player}: {heuristic_value}")  # Debug print statement
+        return heuristic_value
+
+    def future_mobility_with_centrality(self, player):
+        """
+        Calculate the potential future mobility of a player considering centrality.
+        """
+        row, column = self.players[player]['row'], self.players[player]['column']
+
+        # Calculate future moves considering centrality
+        own_moves = [(r, c) for r, c in self.get_valid_moves(row, column) if (r, c) not in self.removed_tokens]
+        own_future_moves_weighted = sum([self.centrality(r, c) for r, c in own_moves])
+
+        # Calculate the reduction in opponent's moves if we move to the given cell
+        opponent = "A" if player == "B" else "B"
+        opponent_current_moves = self.get_valid_moves(self.players[opponent]['row'], self.players[opponent]['column'])
+        opponent_future_moves = sum([len(self.get_valid_moves(r, c)) for r, c in opponent_current_moves])
+
+        mobility_difference = len(opponent_current_moves) - opponent_future_moves
+
+        return own_future_moves_weighted - mobility_difference
+
+    def centrality(self, row, column):
+        """
+        Calculates the centrality of a given cell.
+        Centrality is higher for cells closer to the center of the board.
+        """
+        center_row, center_column = self.rows / 2, self.columns / 2
+        distance_to_center = abs(row - center_row) + abs(column - center_column)
+        
+        # Return a measure of centrality where lower distances have higher centrality
+        return (self.rows + self.columns) - distance_to_center
+
+
+    def simulate_move(self, row, column):
+        """Simulates a move without updating the GUI."""
+        self.players[self.current_player]['row'] = row
+        self.players[self.current_player]['column'] = column
+
+    def undo_move(self, row, column):
+        """Undoes a simulated move."""
+        self.players[self.current_player]['row'] = row
+        self.players[self.current_player]['column'] = column
+    
     def check_win_condition(self):
         """Check if the current player has won the game."""
         # Get the opposing player
