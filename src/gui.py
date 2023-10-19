@@ -13,7 +13,7 @@ class IsolationGUI:
         self.player1_selection_frame.grid(row=0, column=0, columnspan=6, pady=(20, 10))
 
         # Player 1 light indicator
-        self.player1_light = Canvas(self.player1_selection_frame, width=20, height=20, bg="white", relief="ridge")
+        self.player1_light = Canvas(self.player1_selection_frame, width=10, height=10, bg="#a4a6a0", relief="ridge")
         self.player1_light.pack(side=tk.LEFT, padx=5)
 
         # Player 1 selection in the frame
@@ -40,7 +40,7 @@ class IsolationGUI:
         self.player2_selection_frame.grid(row=9, column=0, columnspan=6, pady=(10, 20))
 
         # Player 2 light indicator
-        self.player2_light = Canvas(self.player2_selection_frame, width=20, height=20, bg="white", relief="ridge")
+        self.player2_light = Canvas(self.player2_selection_frame, width=10, height=10, bg="#a4a6a0", relief="ridge")
         self.player2_light.pack(side=tk.LEFT, padx=5)
 
         # Player 2 selection in the frame
@@ -51,15 +51,6 @@ class IsolationGUI:
         self.player2_dropdown = ttk.Combobox(self.player2_selection_frame, textvariable=self.player2_var, values=["Human", "Computer"])
         self.player2_dropdown.pack(side=tk.LEFT, padx=10)
 
-        # Turn indicator and prompt in a separate frame
-        self.turn_frame = tk.Frame(master)
-        self.turn_frame.grid(row=10, column=0, columnspan=6)
-
-        self.turn_indicator = Canvas(self.turn_frame, width=20, height=20, bg="white", relief="ridge")
-        self.turn_indicator.pack(side=tk.LEFT, padx=5)
-        self.turn_prompt = tk.Label(self.turn_frame, text="Player 1's Turn to Move")
-        self.turn_prompt.pack(side=tk.LEFT, padx=10)
-
         # Start and Restart buttons
         self.start_button = tk.Button(master, text="Start", command=self.start_game)
         self.start_button.grid(row=11, column=0, columnspan=3)
@@ -68,18 +59,15 @@ class IsolationGUI:
 
         # Legend and Action Log to the right of the board
         self.side_frame = tk.Frame(master)
-        self.side_frame.grid(row=0, column=6, rowspan=12, sticky="ns")
-
-        legend_label = tk.Label(self.side_frame, text="Legend", font=("Arial", 12, "bold"))
-        legend_label.pack(pady=10)
-        legend_items = [("blue", "Player 1"), ("red", "Player 2"), ("#44463e", "Removed Token")]
+        self.side_frame.grid(row=0, column=6, rowspan=12, sticky="ns", pady=(50, 0))  # Added padding at the top to move legend down
+        legend_items = [("blue", "Player 1"), ("red", "Player 2"), ("#44463e", "Removed Token"), ("white", "Available Cell")]
         for color, text in legend_items:
             item_frame = tk.Frame(self.side_frame)
-            item_frame.pack(pady=5)
+            item_frame.pack(pady=5, fill=tk.X, anchor="e")
             color_label = tk.Label(item_frame, width=5, height=2, bg=color, relief="ridge")
             color_label.pack(side=tk.LEFT, padx=5)
-            text_label = tk.Label(item_frame, text=text)
-            text_label.pack(side=tk.LEFT)
+            text_label = tk.Label(item_frame, text=text, width=15)  # Set a consistent width
+            text_label.pack(side=tk.LEFT, padx=5)
 
         # Action Log
         self.action_log = tk.Listbox(self.side_frame, height=15)
@@ -89,12 +77,12 @@ class IsolationGUI:
     def update_turn_indicator(self):
         # If player 1's turn
         if self.game.current_player_index == 0:
-            self.player1_light.config(bg="green")
-            self.player2_light.config(bg="white")
+            self.player1_light.config(bg="#27c840") # green
+            self.player2_light.config(bg="#febc2f") # orange
         # If player 2's turn
         else:
-            self.player1_light.config(bg="white")
-            self.player2_light.config(bg="green")
+            self.player1_light.config(bg="#febc2f")
+            self.player2_light.config(bg="#27c840")
 
     def refresh_board(self):
         for i in range(8):
@@ -119,6 +107,7 @@ class IsolationGUI:
             if self.game.is_valid_move(current_player, row, col):
                 self.game.make_move(current_player, row, col)
                 self.refresh_board()
+                self.update_turn_indicator()
             else:
                 self.shake_window()  # Provide feedback for invalid move
         else:
@@ -127,6 +116,7 @@ class IsolationGUI:
                 self.game.remove_token(row, col)
                 self.game.current_player_index ^= 1  # Toggle between 0 and 1
                 self.refresh_board()
+                self.update_turn_indicator()
             else:
                 self.shake_window()  # Provide feedback for invalid token removal
 
@@ -156,10 +146,11 @@ class IsolationGUI:
         # Display the players on the board
         self.refresh_board()
 
-        # Disabling the dropdowns once the game starts
+        # Disabling the dropdowns and start button once the game starts
         self.player1_dropdown.config(state="disabled")
         self.player2_dropdown.config(state="disabled")
         self.start_button.config(state="disabled")
+        self.restart_button.config(state="normal")  # Enable the restart button
 
     def restart_game(self):
         # Reset the board and game-related variables
@@ -171,7 +162,7 @@ class IsolationGUI:
         self.player2_dropdown.config(state="normal")
         self.start_button.config(state="normal")
         self.restart_button.config(state="disabled")
-        self.turn_prompt.config(text="Player 1's Turn to Move")
+        # Remove the reference to self.turn_prompt as it's not defined in the current class
         self.action_log.delete(0, tk.END)  # Clear the action log
 
     def display_game_over_message(self):
