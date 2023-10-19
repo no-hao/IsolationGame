@@ -6,10 +6,16 @@ class Player(ABC):
     def choose_move(self, game_state):
         pass
 
+    def choose_token_to_remove(self, game_state):
+        pass
+
 class HumanPlayer(Player):
     def choose_move(self, game_state):
         # The logic for a human player to choose a move.
         # This will be handled by GUI events.
+        pass
+
+    def choose_token_to_remove(self, game_state):
         pass
 
 class ComputerPlayer(Player):
@@ -20,7 +26,7 @@ class ComputerPlayer(Player):
         move = random.choice(valid_moves) if valid_moves else None
         return move
 
-    def choose_cell_to_remove(self, game_state):
+    def choose_token_to_remove(self, game_state):
         valid_remove_cells = [
             (r, c) for r in range(game_state.rows) for c in range(game_state.columns)
             if (r, c) not in game_state.removed_tokens and

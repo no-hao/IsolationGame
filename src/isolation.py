@@ -1,30 +1,35 @@
 import random
+from .player import HumanPlayer, ComputerPlayer
 
 class IsolationGameState:
     def __init__(self, player_A=None, player_B=None):
         # Parameters
         self.rows = 8
         self.columns = 6
-        
+
         # Initialize or reset the game state
         self.current_player = random.choice(["A", "B"])
-        
-        # Check if specific player information is provided, otherwise use default values
-        if player_A and player_B:
-            self.players = {
-                "A": player_A,
-                "B": player_B
-            }
-        else:
-            self.players = {
-                "A": {"row": 0, "column": 3},
-                "B": {"row": 7, "column": 2}
-            }
-        
+
+        default_player_A = {"row": 0, "column": 3, "player_obj": HumanPlayer()}
+        default_player_B = {"row": 7, "column": 2, "player_obj": HumanPlayer()}
+
+        # Set the players based on the provided arguments
+        self.players = {
+            "A": player_A if player_A and self._is_valid_player(player_A) else default_player_A,
+            "B": player_B if player_B and self._is_valid_player(player_B) else default_player_B
+        }
+
         self.removed_tokens = set()
         self.is_move_phase = True
         self.game_over = False
         print("End of __init__ in IsolationGameState:", self.players)
+
+    def _is_valid_player(self, player):
+        """Helper function to check if a player dictionary is valid."""
+        return all(key in player for key in ["row", "column", "player_obj"])
+
+    def get_current_player_obj(self):
+        return self.players[self.current_player].get("player_obj", None)
 
     def get_player_position(self, player):
         return (self.players[player]['row'], self.players[player]['column'])

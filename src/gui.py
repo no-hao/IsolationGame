@@ -18,14 +18,14 @@ class IsolationGui:
         self.playerA_color = "#3498db"  # Blue for Player A
         self.playerB_color = "#e74c3c"  # Red for Player B
 
-        # Initialize game state and players
-        self.game_state = IsolationGameState()
+        # Initialize game state first before setting up the UI components
+        self.initialize_game_state()
 
-        # Set up the UI components FIRST
+        # Set up the UI components
         self.setup_ui_components()
 
         # Finally, initialize the game state using the selected values from the dropdown menus
-        self.game = IsolationGameState(
+        self.game_state = IsolationGameState(
             player_A={
                 'color': self.playerA_color,
                 'player_obj': HumanPlayer() if self.playerA_selection.get() == 'Human' else ComputerPlayer()
@@ -171,21 +171,33 @@ class IsolationGui:
         return x1, y1, x2, y2
 
     def canvas_clicked(self, event):
-        column = event.x // self.cell_size
+        # Convert the canvas coordinates to row and column
         row = event.y // self.cell_size
+        column = event.x // self.cell_size
 
-        if self.game_state.is_move_phase:
-            if isinstance(self.players[self.game_state.current_player], HumanPlayer):
-                self.cell_clicked(row, column)
+        # Check if the move is valid
+        if (row, column) not in self.game_state.get_valid_moves_for_current_player():
+            # Handle invalid move (e.g., show a warning or message on the GUI)
+            return
+
+        # If it's the human player's turn, process the clicked move
+        if isinstance(self.game_state.get_current_player_obj(), HumanPlayer):
+            self.game_state.make_move(row, column)
+            self.draw_board()  # Reflect the move on the GUI
+            self.update_turn_labels()
+            self.process_next_move()  # Check if the next move should be by a computer and execute it
+
+    def process_next_move(self):
+        if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
+            move = self.game_state.get_current_player_obj().choose_move(self.game_state)
+            if move:
+                self.game_state.make_move(*move)
+                self.draw_board()  # Reflect the move on the GUI
+                self.update_turn_labels()
             else:
-                self.computer_move()
-        else:
-            if isinstance(self.players[self.game_state.current_player], HumanPlayer):
-                self.remove_cell(row, column)
-            else:
-                cell_to_remove = self.players[self.game_state.current_player].choose_cell_to_remove(self.game_state)
-                if cell_to_remove:
-                    self.remove_cell(*cell_to_remove)
+                # Handle scenario where the computer can't make a move (e.g., game over)
+                pass  # Additional game over logic can be added here if needed
+
 
     def cell_clicked(self, row, column):
         if self.game_state.is_valid_move(row, column):
@@ -296,6 +308,11 @@ class IsolationGui:
 
     def start_game(self):
         """Start or restart the game based on dropdown selections."""
+        
+        # Get the selected player types from the dropdown menus
+        playerA_type = self.playerA_selection.get()
+        playerB_type = self.playerB_selection.get()
+
         # Lock the dropdowns to prevent changes during gameplay
         self.playerA_dropdown.config(state=tk.DISABLED)
         self.playerB_dropdown.config(state=tk.DISABLED)
@@ -303,33 +320,47 @@ class IsolationGui:
         # Change the "Start" button to "Restart"
         self.start_button.config(text="Restart", command=self.restart_game)
 
-        # Initialize the game based on the dropdown selections
-        self.initialize_game_state()
+        # Initialize the game state with the selected players
+        self.initialize_game_state(
+            player_A={
+                'color': self.playerA_color,
+                'player_obj': HumanPlayer() if playerA_type == 'Human' else ComputerPlayer()
+            },
+            player_B={
+                'color': self.playerB_color,
+                'player_obj': HumanPlayer() if playerB_type == 'Human' else ComputerPlayer()
+            }
+        )
+
         self.draw_board()
         self.update_turn_labels()
         self.canvas.bind("<Button-1>", self.canvas_clicked)
 
-        # If both players are computers, start the game automatically
-        if self.playerA_selection.get() == "Computer" and self.playerB_selection.get() == "Computer":
+        # If the starting player is a computer, start the game automatically
+        if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
             self.trigger_next_move()
 
-    def initialize_game_state(self):
+        # If both players are computers, you might want to automate the game loop.
+        # You can add that logic here if needed.
+
+    def initialize_game_state(self, player_A=None, player_B=None):
         """Initialize or reset the game state."""
+        if not hasattr(self, 'game_state'):
+            self.game_state = IsolationGameState()
+
+        # Update the game state properties directly
         self.game_state.current_player = random.choice(["A", "B"])
-        self.players = {
-            "A": {"row": 0, "column": 3, "color": "#3498db", "text": "A"},
-            "B": {"row": 7, "column": 2, "color": "#e74c3c", "text": "B"}
-        }
-        self.removed_tokens = set()
+        if player_A and player_B:
+            self.game_state.players["A"].update(player_A)
+            self.game_state.players["B"].update(player_B)
+        else:
+            self.game_state.players = {
+                "A": {"row": 0, "column": 3, "player_obj": HumanPlayer()},
+                "B": {"row": 7, "column": 2, "player_obj": HumanPlayer()}
+            }
+        self.game_state.removed_tokens = set()
         self.game_state.is_move_phase = True
-        self.game_over = False
-        
-        # Synchronize with IsolationGameState
-        self.game_state = IsolationGameState()
-        self.game_state.current_player = self.game_state.current_player
-        self.game_state.players = self.players
-        self.game_state.removed_tokens = self.removed_tokens
-        self.game_state.is_move_phase = self.game_state.is_move_phase
+        self.game_state.game_over = False
 
     def restart_game(self):
         """Restart the game and re-enable the dropdowns."""
