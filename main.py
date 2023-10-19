@@ -1,10 +1,10 @@
 import tkinter as tk
-from src.gui import IsolationGui
+from src.gui import IsolationGUI
 
-def run_game():
+def main():
     root = tk.Tk()
-    game = IsolationGui(root)
+    game = IsolationGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":
-    run_game()
+    main()
