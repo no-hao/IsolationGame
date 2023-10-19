@@ -171,65 +171,33 @@ class IsolationGui:
         return x1, y1, x2, y2
 
     def canvas_clicked(self, event):
-        # Convert the canvas coordinates to row and column
         row = event.y // self.cell_size
         column = event.x // self.cell_size
 
-        # Check if the move is valid
         if (row, column) not in self.game_state.get_valid_moves_for_current_player():
-            # Handle invalid move (e.g., show a warning or message on the GUI)
+            print("Invalid move!")  # You can replace this with a more sophisticated warning if desired.
             return
 
-        # If it's the human player's turn, process the clicked move
         if isinstance(self.game_state.get_current_player_obj(), HumanPlayer):
-            self.game_state.make_move(row, column)
-            self.draw_board()  # Reflect the move on the GUI
-            self.update_turn_labels()
-            self.process_next_move()  # Check if the next move should be by a computer and execute it
+            self.cell_clicked(row, column)
+            self.canvas.bind("<Button-1>", self.canvas_remove_cell)
+        print(f"Canvas clicked at coordinates ({event.x}, {event.y}).")
 
     def process_next_move(self):
-        if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
-            move = self.game_state.get_current_player_obj().choose_move(self.game_state)
-            if move:
-                self.game_state.make_move(*move)
-                self.draw_board()  # Reflect the move on the GUI
-                self.update_turn_labels()
-            else:
-                # Handle scenario where the computer can't make a move (e.g., game over)
-                pass  # Additional game over logic can be added here if needed
-
-
-    def cell_clicked(self, row, column):
-        if self.game_state.is_valid_move(row, column):
-            # Update the visual board
-            self.clear_cell(self.game_state.players[self.game_state.current_player]['row'], self.game_state.players[self.game_state.current_player]['column'])
-            self.place_pawn(row, column, "#3498db" if self.game_state.current_player == 'A' else "#e74c3c", self.game_state.current_player)
-
-            # Update game state
-            self.game_state.apply_move((row, column))
-
-            # Check win condition
-            if self.game_state.check_win_condition():
-                self.display_winner(self.game_state.current_player)
-            else:
-                # Switch to remove phase
-                self.game_state.switch_phase()
-
-    def remove_cell(self, row, column):
-        if self.game_state.is_valid_removal(row, column):
-            # Update the visual board
-            x1, y1, x2, y2 = self.get_coordinates(row, column)
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
-
-            # Update game state
-            self.game_state.apply_cell_removal((row, column))
-
-            # Check win condition
-            if self.game_state.check_win_condition():
-                self.display_winner(self.game_state.current_player)
-            else:
-                # Switch to next player's move phase
-                self.game_state.switch_player()
+        if self.game_state.is_move_phase:
+            if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
+                move = self.game_state.get_current_player_obj().choose_move(self.game_state)
+                if move:
+                    self.cell_clicked(*move)
+                else:
+                    self.display_winner(self.game_state.current_player)
+        else:
+            if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
+                cell_to_remove = self.game_state.get_current_player_obj().choose_token_to_remove(self.game_state)
+                if cell_to_remove:
+                    self.remove_cell(*cell_to_remove)
+                else:
+                    self.display_winner(self.game_state.current_player)
 
     def log_message(self, message):
         self.log_display.insert(tk.END, message + "\n")
@@ -263,6 +231,54 @@ class IsolationGui:
 
             self.game_over = True  # Set the game_over flag to True
 
+    def canvas_clicked(self, event):
+        # Convert the canvas coordinates to row and column
+        row = event.y // self.cell_size
+        column = event.x // self.cell_size
+
+        # Check if the move is valid
+        if (row, column) not in self.game_state.get_valid_moves_for_current_player():
+            # Handle invalid move (e.g., show a warning or message on the GUI)
+            return
+
+        # If it's the human player's turn, process the clicked move
+        if isinstance(self.game_state.get_current_player_obj(), HumanPlayer):
+            self.cell_clicked(row, column)
+            # After the move, bind the next click event to cell removal
+            self.canvas.bind("<Button-1>", self.canvas_remove_cell)
+
+    def cell_clicked(self, row, column):
+        self.clear_cell(self.game_state.get_player_position(self.game_state.current_player))
+        color = self.playerA_color if self.game_state.current_player == "A" else self.playerB_color
+        self.place_pawn(row, column, color, self.game_state.current_player)
+        self.game_state.apply_move((row, column))
+
+        if self.game_state.check_win_condition():
+            self.display_winner(self.game_state.current_player)
+        else:
+            self.game_state.switch_phase()
+            self.update_turn_labels()
+
+    def canvas_remove_cell(self, event):
+        row = event.y // self.cell_size
+        column = event.x // self.cell_size
+
+        self.remove_cell(row, column)
+        print(f"Canvas cell removal clicked at coordinates ({event.x}, {event.y}).")
+
+
+    def remove_cell(self, row, column):
+        if self.game_state.is_valid_removal(row, column):
+            x1, y1, x2, y2 = self.get_coordinates(row, column)
+            self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.removed_cell_color, tags=f"cell_{row}_{column}")
+
+            self.game_state.apply_remove_token((row, column))
+
+            if self.game_state.check_win_condition():
+                self.display_winner(self.game_state.current_player)
+            else:
+                self.game_state.switch_player()
+
     def center_window(self, window):
         """Center the given window on the screen."""
         window.update_idletasks()
@@ -294,33 +310,25 @@ class IsolationGui:
         self.canvas.create_rectangle(x1, y1, x2, y2, fill="#bdc3c7", tags=f"cell_{row}_{column}")
 
     def update_turn_labels(self):
-        """Update turn labels based on the current player and phase."""
         instruction_text = "Choose a move" if self.game_state.is_move_phase else "Remove a token"
 
         if self.game_state.current_player == "A":
-            self.turn_label_A.config(text=f"Player A's Turn", fg="#27ae60")  # Setting the color to green
+            self.turn_label_A.config(text=f"Player A's Turn", fg="#27ae60")
             self.turn_label_B.config(text="")
             self.invalid_move_label_A.config(text=instruction_text, fg="#2c3e50")
         else:
             self.turn_label_A.config(text="")
-            self.turn_label_B.config(text=f"Player B's Turn", fg="#27ae60")  # Setting the color to green
+            self.turn_label_B.config(text=f"Player B's Turn", fg="#27ae60")
             self.invalid_move_label_B.config(text=instruction_text, fg="#2c3e50")
 
     def start_game(self):
-        """Start or restart the game based on dropdown selections."""
-        
-        # Get the selected player types from the dropdown menus
         playerA_type = self.playerA_selection.get()
         playerB_type = self.playerB_selection.get()
 
-        # Lock the dropdowns to prevent changes during gameplay
         self.playerA_dropdown.config(state=tk.DISABLED)
         self.playerB_dropdown.config(state=tk.DISABLED)
-
-        # Change the "Start" button to "Restart"
         self.start_button.config(text="Restart", command=self.restart_game)
 
-        # Initialize the game state with the selected players
         self.initialize_game_state(
             player_A={
                 'color': self.playerA_color,
@@ -336,12 +344,11 @@ class IsolationGui:
         self.update_turn_labels()
         self.canvas.bind("<Button-1>", self.canvas_clicked)
 
-        # If the starting player is a computer, start the game automatically
         if isinstance(self.game_state.get_current_player_obj(), ComputerPlayer):
             self.trigger_next_move()
 
-        # If both players are computers, you might want to automate the game loop.
-        # You can add that logic here if needed.
+        # Add logic here to handle the case when both players are computers.
+        # If you decide to implement a game loop for this scenario, add it here.
 
     def initialize_game_state(self, player_A=None, player_B=None):
         """Initialize or reset the game state."""

@@ -23,15 +23,17 @@ class ComputerPlayer(Player):
         # The logic for the computer to select a move.
         # This will be a simple random choice for now.
         valid_moves = game_state.get_valid_moves_for_current_player()
-        move = random.choice(valid_moves) if valid_moves else None
-        return move
-
+        chosen_move = random.choice(valid_moves) if valid_moves else None
+        print(f"Computer chose move {chosen_move}.")
+        return chosen_move
+    
     def choose_token_to_remove(self, game_state):
-        valid_remove_cells = [
+        valid_token_removals = [
             (r, c) for r in range(game_state.rows) for c in range(game_state.columns)
             if (r, c) not in game_state.removed_tokens and
             (r, c) != game_state.get_player_position("A") and 
             (r, c) != game_state.get_player_position("B")
         ]
-        remove_cell = random.choice(valid_remove_cells) if valid_remove_cells else None
-        return remove_cell
+        chosen_token = random.choice(valid_remove_cells) if valid_remove_cells else None
+        print(f"Computer chose token {chosen_token} to remove.")
+        return chosen_token
