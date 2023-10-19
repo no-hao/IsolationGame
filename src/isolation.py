@@ -1,5 +1,5 @@
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("IsolationGameLogger")
 
 
 class Isolation:
@@ -16,6 +16,10 @@ class Isolation:
 
         self.update_board_with_players()
         self.awaiting_token_removal = False
+
+        # Initialize the count of tokens removed by each player
+        self.tokens_removed_by_player = {player1: 0, player2: 0}
+        self.moves_by_player = {self.players[0]: 0, self.players[1]: 0}
 
     def get_cell_value(self, row, col):
         return self.board[row][col]
@@ -55,6 +59,7 @@ class Isolation:
             self.update_board_with_players()
             self.awaiting_token_removal = True
             logger.info(f"{player.name} moved to ({row}, {col}). Awaiting token removal.")
+            self.moves_by_player[player] += 1
             return True
         return False
 
@@ -73,9 +78,17 @@ class Isolation:
         if self.is_valid_token_removal(row, col):
             self.set_cell_value(row, col, -1)
             self.awaiting_token_removal = False
+            current_player = self.players[self.current_player_index]
+            self.tokens_removed_by_player[current_player] += 1
             logger.info(f"Token removed at ({row}, {col}).")
             return True
         return False
+
+    def display_stats(self):
+        logger.info(f"Moves made by {self.players[0].name}: {self.moves_by_player[self.players[0]]}")
+        logger.info(f"Moves made by {self.players[1].name}: {self.moves_by_player[self.players[1]]}")
+        logger.info(f"Tokens Removed by {self.players[0].name}: {self.tokens_removed_by_player[self.players[0]]}")
+        logger.info(f"Tokens Removed by {self.players[1].name}: {self.tokens_removed_by_player[self.players[1]]}")
 
     def is_game_over(self):
         # Check if the current player can make any valid moves

@@ -7,7 +7,7 @@ from .player import Player, HumanPlayer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("IsolationGameLogger")
 logger.handlers = []  # Clear existing handlers
 
 class ListboxHandler(logging.Handler):
@@ -26,8 +26,16 @@ class IsolationGUI:
         self.master = master
         self.master.title("Isolation Game")
 
+        self.setup_bindings()
+        self.setup_player_selection()
+        self.setup_board()
+        self.setup_buttons()
+        self.setup_side_panel()
+        self.setup_logger()
+
+    def setup_player_selection(self):
         # Player 1 Selection Frame
-        self.player1_selection_frame = tk.Frame(master)
+        self.player1_selection_frame = tk.Frame(self.master)
         self.player1_selection_frame.grid(row=0, column=0, columnspan=6, pady=(20, 10))
 
         # Player 1 light indicator
@@ -37,24 +45,13 @@ class IsolationGUI:
         # Player 1 selection in the frame
         self.player1_label = tk.Label(self.player1_selection_frame, text="Player 1:")
         self.player1_label.pack(side=tk.LEFT, padx=10)
-        self.player1_var = tk.StringVar(master)
+        self.player1_var = tk.StringVar(self.master)
         self.player1_var.set("Human")  # default value
-        self.player1_dropdown = ttk.Combobox(self.player1_selection_frame, textvariable=self.player1_var, values=["Human", "Computer"])
+        self.player1_dropdown = ttk.Combobox(self.player1_selection_frame, textvariable=self.player1_var, values=["Human", "Computer"], state="readonly")
         self.player1_dropdown.pack(side=tk.LEFT, padx=10)
 
-        # Create the game board
-        self.cells = []
-        for i in range(8):
-            row = []
-            for j in range(6):
-                cell = tk.Label(master, width=10, height=4, bg="white", relief="ridge")
-                cell.grid(row=i+1, column=j)  # Offset by 1 to account for Player 1 dropdown
-                cell.bind("<Button-1>", self.handle_cell_click)
-                row.append(cell)
-            self.cells.append(row)
-
         # Player 2 Selection Frame
-        self.player2_selection_frame = tk.Frame(master)
+        self.player2_selection_frame = tk.Frame(self.master)
         self.player2_selection_frame.grid(row=9, column=0, columnspan=6, pady=(10, 20))
 
         # Player 2 light indicator
@@ -64,19 +61,14 @@ class IsolationGUI:
         # Player 2 selection in the frame
         self.player2_label = tk.Label(self.player2_selection_frame, text="Player 2:")
         self.player2_label.pack(side=tk.LEFT, padx=10)
-        self.player2_var = tk.StringVar(master)
+        self.player2_var = tk.StringVar(self.master)
         self.player2_var.set("Human")  # default value
-        self.player2_dropdown = ttk.Combobox(self.player2_selection_frame, textvariable=self.player2_var, values=["Human", "Computer"])
+        self.player2_dropdown = ttk.Combobox(self.player2_selection_frame, textvariable=self.player2_var, values=["Human", "Computer"], state="readonly")
         self.player2_dropdown.pack(side=tk.LEFT, padx=10)
 
-        # Start and Restart buttons
-        self.start_button = tk.Button(master, text="Start", command=self.start_game)
-        self.start_button.grid(row=11, column=0, columnspan=3)
-        self.restart_button = tk.Button(master, text="Restart", command=self.restart_game, state="disabled")
-        self.restart_button.grid(row=11, column=3, columnspan=3)
-
+    def setup_side_panel(self):
         # Legend and Action Log to the right of the board
-        self.side_frame = tk.Frame(master)
+        self.side_frame = tk.Frame(self.master)
         self.side_frame.grid(row=0, column=6, rowspan=12, sticky="ns", pady=(50, 0))  # Added padding at the top to move legend down
         legend_items = [("blue", "Player 1"), ("red", "Player 2"), ("#44463e", "Removed Token"), ("white", "Available Cell")]
         for color, text in legend_items:
@@ -88,14 +80,37 @@ class IsolationGUI:
             text_label.pack(side=tk.LEFT, padx=5)
 
         # Action Log
-        self.action_log = tk.Listbox(self.side_frame, height=15, width=25)
+        self.action_log = tk.Listbox(self.side_frame, height=15, width=35)
         self.action_log.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
 
-        # Set up the logger to display logs in the action_log Listbox
+    def setup_board(self):
+        # Create the game board
+        self.cells = []
+        for i in range(8):
+            row = []
+            for j in range(6):
+                cell = tk.Label(self.master, width=10, height=4, bg="white", relief="ridge")
+                cell.grid(row=i+1, column=j)  # Offset by 1 to account for Player 1 dropdown
+                cell.bind("<Button-1>", self.handle_cell_click)
+                row.append(cell)
+            self.cells.append(row)
+
+    def setup_buttons(self):
+        # Start and Restart buttons
+        self.start_button = tk.Button(self.master, text="Start", command=self.start_game)
+        self.start_button.grid(row=11, column=0, columnspan=3)
+        self.restart_button = tk.Button(self.master, text="Restart", command=self.restart_game, state="disabled")
+        self.restart_button.grid(row=11, column=3, columnspan=3)
+
+    def setup_logger(self):
         handler = ListboxHandler(self.action_log)
         formatter = logging.Formatter('%(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+    def setup_bindings(self):
+        # Bind the "Escape" key to the close_confetti method
+        self.master.bind("<Escape>", self.close_confetti)
 
     # When updating the turn, we should also update the light indicators:
     def update_turn_indicator(self):
@@ -202,9 +217,58 @@ class IsolationGUI:
         # logging message
         logger.info("Game restarted.")
 
+    def display_confetti(self):
+        # Create a canvas overlaying the entire game board
+        self.confetti_canvas = tk.Canvas(self.master, width=self.master.winfo_width(), height=self.master.winfo_height(), bd=0, highlightthickness=0)
+        self.confetti_canvas.grid(row=0, column=0, rowspan=12, columnspan=7)
+
+        # Create confetti (small rectangles)
+        self.confetti_pieces = []
+        for _ in range(100):  # for 100 pieces of confetti
+            x = random.randint(0, self.master.winfo_width())
+            y = random.randint(-200, -10)  # start off the screen
+            confetti_color = random.choice(["red", "blue", "green", "yellow", "purple", "orange"])
+            piece = self.confetti_canvas.create_rectangle(x, y, x+10, y+10, fill=confetti_color)
+            self.confetti_pieces.append(piece)
+
+        # Start the animation
+        self.animate_confetti()
+
+    def animate_confetti(self):
+        if not hasattr(self, 'confetti_canvas'):
+            return  # Exit the method if there's no confetti canvas
+        for piece in self.confetti_pieces:
+            self.confetti_canvas.move(piece, 0, 10)  # Move downwards
+            if self.confetti_canvas.coords(piece)[1] > self.master.winfo_height():
+                # Reset the piece to the top if it falls off the bottom
+                self.confetti_canvas.move(piece, 0, -self.master.winfo_height()-20)
+        self.master.after(50, self.animate_confetti)  # Repeat every 50 ms
+
+    def close_confetti(self, event=None):
+        """Hide the confetti canvas and prepare for a potential game restart."""
+        if hasattr(self, 'confetti_canvas'):
+            self.confetti_canvas.destroy()
+            del self.confetti_canvas  # Remove the reference to the canvas
+            self.restart_game()  # Prepare for a new game
 
     def display_game_over_message(self):
+        # Create confetti canvas
+        self.display_confetti()
+        
         # Display a game over message
         winning_player_index = 1 - self.game.current_player_index  # Toggle between 0 and 1
         winning_player_name = self.game.players[winning_player_index].name
-        tk.messagebox.showinfo("Game Over", f"{winning_player_name} Wins!")
+
+        # Add the game over message to the canvas
+        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 - 50,
+                                        text=f"{winning_player_name} Wins!", font=('Arial', 24, 'bold'), fill='black')
+
+        # Add the game statistics below the game over message
+        stats_text = (
+            f"Moves made by {self.game.players[0].name}: {self.game.moves_by_player[self.game.players[0]]}\n"
+            f"Moves made by {self.game.players[1].name}: {self.game.moves_by_player[self.game.players[1]]}\n"
+            f"Tokens Removed by {self.game.players[0].name}: {self.game.tokens_removed_by_player[self.game.players[0]]}\n"
+            f"Tokens Removed by {self.game.players[1].name}: {self.game.tokens_removed_by_player[self.game.players[1]]}"
+        )
+        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 + 50,
+                                        text=stats_text, font=('Arial', 14), fill='black')
