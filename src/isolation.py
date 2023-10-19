@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger(__name__)
+
+
 class Isolation:
     def __init__(self, player1, player2):
         self.board = [[0 for _ in range(6)] for _ in range(8)]  # 0 represents available cell
@@ -50,6 +54,7 @@ class Isolation:
             self.player_positions[player] = (row, col)
             self.update_board_with_players()
             self.awaiting_token_removal = True
+            logger.info(f"{player.name} moved to ({row}, {col}). Awaiting token removal.")
             return True
         return False
 
@@ -68,6 +73,7 @@ class Isolation:
         if self.is_valid_token_removal(row, col):
             self.set_cell_value(row, col, -1)
             self.awaiting_token_removal = False
+            logger.info(f"Token removed at ({row}, {col}).")
             return True
         return False
 

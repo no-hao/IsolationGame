@@ -1,7 +1,25 @@
+import random
+import logging
 import tkinter as tk
 from tkinter import ttk, messagebox, Canvas
 from .isolation import Isolation
 from .player import Player, HumanPlayer
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
+logger.handlers = []  # Clear existing handlers
+
+class ListboxHandler(logging.Handler):
+    def __init__(self, listbox):
+        super().__init__()
+        self.listbox = listbox
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.listbox.insert(tk.END, log_entry)
+        # Ensure the latest log is visible in the Listbox
+        self.listbox.yview(tk.END)
 
 class IsolationGUI:
     def __init__(self, master):
@@ -70,8 +88,14 @@ class IsolationGUI:
             text_label.pack(side=tk.LEFT, padx=5)
 
         # Action Log
-        self.action_log = tk.Listbox(self.side_frame, height=15)
+        self.action_log = tk.Listbox(self.side_frame, height=15, width=25)
         self.action_log.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        # Set up the logger to display logs in the action_log Listbox
+        handler = ListboxHandler(self.action_log)
+        formatter = logging.Formatter('%(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     # When updating the turn, we should also update the light indicators:
     def update_turn_indicator(self):
@@ -143,6 +167,12 @@ class IsolationGUI:
 
         self.game = Isolation(player1_class("Player 1"), player2_class("Player 2"))
 
+        # Randomize the starting player
+        self.game.current_player_index = random.choice([0, 1])
+        
+        # Update light indicator for the starting player
+        self.update_turn_indicator()
+
         # Display the players on the board
         self.refresh_board()
 
@@ -151,6 +181,10 @@ class IsolationGUI:
         self.player2_dropdown.config(state="disabled")
         self.start_button.config(state="disabled")
         self.restart_button.config(state="normal")  # Enable the restart button
+
+        # logging message
+        logger.info(f"Game started. {self.game.players[self.game.current_player_index].name} goes first.")
+
 
     def restart_game(self):
         # Reset the board and game-related variables
@@ -164,6 +198,10 @@ class IsolationGUI:
         self.restart_button.config(state="disabled")
         # Remove the reference to self.turn_prompt as it's not defined in the current class
         self.action_log.delete(0, tk.END)  # Clear the action log
+
+        # logging message
+        logger.info("Game restarted.")
+
 
     def display_game_over_message(self):
         # Display a game over message
