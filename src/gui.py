@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from .isolation import Isolation
 from .player import Player, HumanPlayer
 
@@ -61,11 +61,37 @@ class IsolationGUI:
         row, col = event.widget.grid_info()["row"], event.widget.grid_info()["column"]
         current_player = self.game.players[self.game.current_player_index]
 
-        # If a move is valid, switch to the next player
-        if self.game.make_move(current_player, row, col):
-            self.game.current_player_index ^= 1  # Toggle between 0 and 1
+        if not self.game.awaiting_token_removal:
+            # Process a move
+            if self.game.is_valid_move(current_player, row, col):
+                self.game.make_move(current_player, row, col)
+                self.refresh_board()
+            else:
+                self.shake_window()  # Provide feedback for invalid move
+        else:
+            # Process a token removal
+            if self.game.is_valid_token_removal(row, col):
+                self.game.remove_token(row, col)
+                self.game.current_player_index ^= 1  # Toggle between 0 and 1
+                self.refresh_board()
+            else:
+                self.shake_window()  # Provide feedback for invalid token removal
 
-        self.refresh_board()
+        if self.game.is_game_over():
+            self.display_game_over_message()
+
+    def shake_window(self):
+        # Shake the window as feedback for invalid action
+        x, y = self.master.winfo_x(), self.master.winfo_y()
+        offset = 5  # Number of pixels to move the window
+        
+        for _ in range(2):  # Shake back and forth, therefore 2 iterations
+            for (dx, dy) in [(offset, 0), (-offset, 0), (-offset, 0), (offset, 0), (0, offset), (0, -offset), (0, -offset), (0, offset)]:
+                self.master.geometry(f"+{x+dx}+{y+dy}")
+                self.master.update_idletasks()  # Force update the display
+                self.master.after(3)  # Pause for 3 milliseconds
+
+        self.master.geometry(f"+{x}+{y}")  # Return the window to its original location
 
     def start_game(self):
         # Initialize the game with the selected players
@@ -81,3 +107,9 @@ class IsolationGUI:
         self.player1_dropdown.config(state="disabled")
         self.player2_dropdown.config(state="disabled")
         self.start_button.config(state="disabled")
+
+    def display_game_over_message(self):
+        # Display a game over message
+        winning_player_index = 1 - self.game.current_player_index  # Toggle between 0 and 1
+        winning_player_name = self.game.players[winning_player_index].name
+        tk.messagebox.showinfo("Game Over", f"{winning_player_name} Wins!")
