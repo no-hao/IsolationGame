@@ -48,14 +48,31 @@ class ComputerPlayer(Player):
 
         return max(scores, key=scores.get)
 
+    def best_token_to_remove_using_heuristics(self, game_state):
+        """Choose the best token to remove using the heuristic that minimizes the opponent's available moves."""
+        available_tokens = game_state.get_available_tokens_to_remove()
+        if not available_tokens:
+            return None
+
+        # Determine the opponent
+        opponent = game_state.players[0] if self == game_state.players[1] else game_state.players[1]
+
+        scores = {}
+        for token in available_tokens:
+            mock_game_state = game_state.mock_remove_token(*token)
+            opponent_moves = len(mock_game_state.get_available_moves(opponent))
+            scores[token] = opponent_moves
+
+        # Choose the token whose removal minimizes the opponent's available moves
+        return min(scores, key=scores.get)
+
     def choose_move(self, game_state):
         """Choose a move using heuristics."""
         return self.best_move_using_heuristics(game_state)
 
     def choose_token_to_remove(self, game_state):
-        """Choose a random valid token to remove."""
-        available_tokens = game_state.get_available_tokens_to_remove()
-        return random.choice(available_tokens) if available_tokens else None
+        """Choose a token to remove using heuristics."""
+        return self.best_token_to_remove_using_heuristics(game_state)
 
     def frontier_cells_heuristic(self, game_state, player):
         # Compute the positions after the move
