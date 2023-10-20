@@ -89,21 +89,28 @@ class Isolation:
         return mock_game
 
     def mock_remove_token(self, row, col):
-    """Simulate removing a token without affecting the actual game state."""
-    mock_game = copy.deepcopy(self)
+        """Simulate removing a token without affecting the actual game state."""
+        if not self.is_valid_token_removal(row, col):
+            return None
 
-    # Ensure the copied game state refers to the same player objects as the original game state
-    mock_game.players[0] = self.players[0]
-    mock_game.players[1] = self.players[1]
-    mock_game.player_positions[self.players[0]] = self.player_positions[self.players[0]]
-    mock_game.player_positions[self.players[1]] = self.player_positions[self.players[1]]
-    mock_game.moves_by_player[self.players[0]] = self.moves_by_player[self.players[0]]
-    mock_game.moves_by_player[self.players[1]] = self.moves_by_player[self.players[1]]
-    
-    mock_game.board[row][col] = -1  # Represent a removed token with -1
-    
-    return mock_game
+        mock_game = copy.deepcopy(self)
 
+        # Ensure the copied game state refers to the same player objects as the original game state
+        mock_game.players[0] = self.players[0]
+        mock_game.players[1] = self.players[1]
+        mock_game.player_positions[self.players[0]] = self.player_positions[self.players[0]]
+        mock_game.player_positions[self.players[1]] = self.player_positions[self.players[1]]
+        
+        mock_game.moves_by_player[self.players[0]] = self.moves_by_player[self.players[0]]
+        mock_game.moves_by_player[self.players[1]] = self.moves_by_player[self.players[1]]
+
+        # Explicitly maintain other attributes
+        mock_game.awaiting_token_removal = self.awaiting_token_removal
+        mock_game.tokens_removed_by_player = self.tokens_removed_by_player.copy()
+
+        mock_game.board[row][col] = -1  # Represent a removed token with -1
+        
+        return mock_game
 
     def make_move(self, player, row, col):
         if self.is_valid_move(player, row, col):
@@ -127,8 +134,11 @@ class Isolation:
         if not (0 <= row < 8 and 0 <= col < 6):
             return False
 
+        # Get the cell value
+        cell_value = self.get_cell_value(row, col)
+
         # Check if the cell is not occupied by a player and has a token
-        if self.get_cell_value(row, col) in [player for player in self.players] or self.get_cell_value(row, col) == -1:
+        if cell_value in self.players or cell_value == -1:
             return False
 
         return True

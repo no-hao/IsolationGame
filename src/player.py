@@ -1,3 +1,4 @@
+import time
 import random
 import logging
 logger = logging.getLogger("IsolationGameLogger")
@@ -37,17 +38,23 @@ class ComputerPlayer(Player):
 
     def minimax(self, game_state, depth, alpha, beta, maximizing_player):
         # Base case: terminal state or depth reached
-        if depth == 0:  # We'll add the is_terminal check later
+        if depth == 0:  
             return self.heuristic(game_state, self)
 
         # Check for terminal state
-        if not game_state.get_available_moves(self):
-            return float("inf") if maximizing_player else float("-inf")
+        opponent = game_state.players[1 - game_state.current_player_index]
+        available_moves = game_state.get_available_moves(self if maximizing_player else opponent)
+        
+        if not available_moves:
+            # If we're not at the maximum depth and there are no valid moves, this is a bad state.
+            if depth != ComputerPlayer.DEPTH:
+                return float("-inf") if maximizing_player else float("inf")
+            return self.heuristic(game_state, self)
 
         # Max player's turn (Computer)
         if maximizing_player:
             max_eval = float('-inf')
-            for move in game_state.get_available_moves(self):
+            for move in available_moves:
                 mock_game_state = game_state.mock_move(self, move)
                 eval = self.minimax(mock_game_state, depth-1, alpha, beta, False)
                 max_eval = max(max_eval, eval)
@@ -58,8 +65,7 @@ class ComputerPlayer(Player):
         # Min player's turn (Opponent)
         else:
             min_eval = float('inf')
-            opponent = game_state.players[0] if self == game_state.players[1] else game_state.players[1]
-            for move in game_state.get_available_moves(opponent):
+            for move in available_moves:
                 mock_game_state = game_state.mock_move(opponent, move)
                 eval = self.minimax(mock_game_state, depth-1, alpha, beta, True)
                 min_eval = min(min_eval, eval)
@@ -68,31 +74,11 @@ class ComputerPlayer(Player):
                     break
             return min_eval
 
-    def best_token_to_remove_using_heuristics(self, game_state):
-        """Choose the best token to remove using the heuristic that minimizes the opponent's available moves."""
-        available_tokens = game_state.get_available_tokens_to_remove()
-        if not available_tokens:
-            return None
-
-        # Determine the opponent
-        opponent = game_state.players[0] if self == game_state.players[1] else game_state.players[1]
-
-        scores = {}
-        for token in available_tokens:
-            mock_game_state = game_state.mock_remove_token(*token)
-            opponent_moves = len(mock_game_state.get_available_moves(opponent))
-            
-            # Add a small random perturbation to the score
-            perturbed_score = opponent_moves + random.uniform(-0.01, 0.01)
-            
-            scores[token] = perturbed_score
-
-        # Choose the token whose removal minimizes the opponent's available moves (after perturbation)
-        return min(scores, key=scores.get)
-
     def choose_move(self, game_state):
         """Choose a move using MiniMax with Alpha-Beta pruning."""
-        # If only one valid move is available, return it immediately.
+        start_time = time.time()
+        time_limit = 1.0  # 1 second, adjust as necessary
+
         valid_moves = game_state.get_available_moves(self)
         if len(valid_moves) == 1:
             return valid_moves[0]
@@ -103,18 +89,32 @@ class ComputerPlayer(Player):
         beta = float('inf')
         depth = ComputerPlayer.DEPTH
 
-        # Evaluate all possible moves and return the best one
-        for move in game_state.get_available_moves(self):
+        evaluated_moves = set()
+
+        for move in valid_moves:
             mock_game_state = game_state.mock_move(self, move)
             move_value = self.minimax(mock_game_state, depth-1, alpha, beta, False)
+
             if move_value > best_value:
                 best_value = move_value
                 best_move = move
+            
+            evaluated_moves.add(move)
+
+            # Check if we've surpassed our time limit
+            if time.time() - start_time > time_limit:
+                break
+
+        # If we've already evaluated this move, use a fallback strategy
+        if best_move in evaluated_moves:
+            logger.warning("Fallback to random choice due to previously evaluated move.")
+            best_move = random.choice(valid_moves)
+
         return best_move
 
     def choose_token_to_remove(self, game_state):
-        """Choose a token to remove using heuristics."""
-        return self.best_token_to_remove_using_heuristics(game_state)
+        """Choose a token to remove using the new heuristic."""
+        return self.token_removal_heuristic(game_state)
 
     def frontier_cells_heuristic(self, game_state, player):
         # Compute the positions after the move
@@ -135,3 +135,56 @@ class ComputerPlayer(Player):
         our_valid_moves = game_state.get_available_moves(player)
         opponent_valid_moves = game_state.get_available_moves(opponent)
         return 2 * len(our_valid_moves) - len(opponent_valid_moves)
+
+    def token_removal_heuristic(self, game_state):
+        available_tokens = game_state.get_available_tokens_to_remove()
+        if not available_tokens:
+            logger.warning("No valid tokens to remove.")
+            return None
+
+        if len(available_tokens) == 1:
+            return available_tokens[0]
+
+        opponent = game_state.players[0] if self == game_state.players[1] else game_state.players[1]
+        our_position = game_state.get_player_position(self)
+        opponent_position = game_state.get_player_position(opponent)
+
+        total_tokens = sum([1 for row in game_state.board for cell in row if cell != 0])
+        token_factor = total_tokens / (8 * 6)  # Assuming 8x6 is the board size
+
+        scores = {}
+        for token in available_tokens:
+            score = 0
+
+            # Proximity to the opponent
+            distance_to_opponent = abs(opponent_position[0] - token[0]) + abs(opponent_position[1] - token[1])
+            score -= distance_to_opponent * token_factor
+
+            # Proximity to the center
+            center_distance = abs(4 - token[0]) + abs(3 - token[1])
+            score -= center_distance * (1 - token_factor)
+
+            # Predictive blocking (1 move ahead for now)
+            mock_game_state = game_state.mock_remove_token(*token)
+            opponent_best_move_value = max([self.frontier_cells_heuristic(mock_game_state.mock_move(opponent, move), opponent) for move in mock_game_state.get_available_moves(opponent)], default=0)
+            score -= opponent_best_move_value
+
+            # Effect on opponent's moves
+            opponent_moves_after_removal = len(mock_game_state.get_available_moves(opponent))
+            original_opponent_moves = len(game_state.get_available_moves(opponent))
+            move_difference = original_opponent_moves - opponent_moves_after_removal
+            score += move_difference
+
+            # Random factor
+            score += random.uniform(0, 1)
+
+            scores[token] = score
+
+        best_token = max(scores, key=scores.get)
+
+        # Safety net: If AI is repeatedly choosing the same token, choose randomly
+        if hasattr(self, 'previous_token') and self.previous_token == best_token:
+            best_token = random.choice(available_tokens)
+        self.previous_token = best_token
+
+        return best_token
