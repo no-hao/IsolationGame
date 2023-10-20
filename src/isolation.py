@@ -88,22 +88,21 @@ class Isolation:
 
         return mock_game
 
-
     def mock_remove_token(self, row, col):
-        """Simulate removing a token without affecting the actual game state."""
-        mock_game = copy.deepcopy(self)
+    """Simulate removing a token without affecting the actual game state."""
+    mock_game = copy.deepcopy(self)
 
-        # Ensure the copied game state refers to the same player objects as the original game state
-        mock_game.players[0] = self.players[0]
-        mock_game.players[1] = self.players[1]
-        mock_game.player_positions[self.players[0]] = self.player_positions[self.players[0]]
-        mock_game.player_positions[self.players[1]] = self.player_positions[self.players[1]]
-        mock_game.moves_by_player[self.players[0]] = self.moves_by_player[self.players[0]]
-        mock_game.moves_by_player[self.players[1]] = self.moves_by_player[self.players[1]]
-        
-        mock_game.board[row][col] = -1  # Represent a removed token with -1
-        
-        return mock_game
+    # Ensure the copied game state refers to the same player objects as the original game state
+    mock_game.players[0] = self.players[0]
+    mock_game.players[1] = self.players[1]
+    mock_game.player_positions[self.players[0]] = self.player_positions[self.players[0]]
+    mock_game.player_positions[self.players[1]] = self.player_positions[self.players[1]]
+    mock_game.moves_by_player[self.players[0]] = self.moves_by_player[self.players[0]]
+    mock_game.moves_by_player[self.players[1]] = self.moves_by_player[self.players[1]]
+    
+    mock_game.board[row][col] = -1  # Represent a removed token with -1
+    
+    return mock_game
 
 
     def make_move(self, player, row, col):
