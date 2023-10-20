@@ -30,7 +30,7 @@ class HumanPlayer(Player):
         pass
 
 class ComputerPlayer(Player):
-    DEPTH = 5  # Default depth
+    DEPTH = 8  # Default depth
 
     def __init__(self, name, heuristic=None):
         super().__init__(name)
@@ -38,7 +38,7 @@ class ComputerPlayer(Player):
 
     def minimax(self, game_state, depth, alpha, beta, maximizing_player):
         # Base case: terminal state or depth reached
-        if depth == 0:  
+        if depth == 0:
             return self.heuristic(game_state, self)
 
         # Check for terminal state
@@ -77,7 +77,7 @@ class ComputerPlayer(Player):
     def choose_move(self, game_state):
         """Choose a move using MiniMax with Alpha-Beta pruning."""
         start_time = time.time()
-        time_limit = 1.0  # 1 second, adjust as necessary
+        time_limit = 8.0  # 1 second, adjust as necessary
 
         valid_moves = game_state.get_available_moves(self)
         if len(valid_moves) == 1:
@@ -116,6 +116,15 @@ class ComputerPlayer(Player):
         """Choose a token to remove using the new heuristic."""
         return self.token_removal_heuristic(game_state)
 
+    def composite_heuristic(self, game_state, player):
+        w1, w2, w3 = 0.4, 0.3, 0.3  # These weights can be tuned
+        
+        mobility_score = w1 * self.enhanced_mobility_heuristic(game_state, player)
+        center_control_score = w2 * self.control_of_center_heuristic(game_state, player)
+        difference_score = w3 * self.enhanced_difference_heuristic(game_state, player)
+        
+        return mobility_score + center_control_score + difference_score
+
     def frontier_cells_heuristic(self, game_state, player):
         # Compute the positions after the move
         row, col = game_state.get_player_position(player)
@@ -135,6 +144,29 @@ class ComputerPlayer(Player):
         our_valid_moves = game_state.get_available_moves(player)
         opponent_valid_moves = game_state.get_available_moves(opponent)
         return 2 * len(our_valid_moves) - len(opponent_valid_moves)
+
+    def enhanced_mobility_heuristic(self, game_state, player):
+        immediate_moves = game_state.get_available_moves(player)
+        lambda_factor = 0.5
+        future_mobility = sum([len(game_state.mock_move(player, move).get_available_moves(player)) for move in immediate_moves])
+        return len(immediate_moves) + lambda_factor * future_mobility
+
+    def control_of_center_heuristic(self, game_state, player):
+        row, col = game_state.get_player_position(player)
+        center_row, center_col = 4, 3
+        distance_from_center = abs(center_row - row) + abs(center_col - col)
+        return -distance_from_center  # We want to minimize this distance
+
+    def enhanced_difference_heuristic(self, game_state, player):
+        opponent = game_state.players[0] if player == game_state.players[1] else game_state.players[1]
+        
+        our_moves = len(game_state.get_available_moves(player))
+        opponent_moves = len(game_state.get_available_moves(opponent))
+        
+        our_future_mobility = sum([len(game_state.mock_move(player, move).get_available_moves(player)) for move in game_state.get_available_moves(player)])
+        opponent_future_mobility = sum([len(game_state.mock_move(opponent, move).get_available_moves(opponent)) for move in game_state.get_available_moves(opponent)])
+        
+        return 2 * (our_moves - opponent_moves) + (our_future_mobility - opponent_future_mobility)
 
     def token_removal_heuristic(self, game_state):
         available_tokens = game_state.get_available_tokens_to_remove()
