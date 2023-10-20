@@ -1,3 +1,4 @@
+import time
 import copy
 import logging
 from .player import ComputerPlayer
@@ -9,6 +10,7 @@ class Isolation:
         self.board = [[0 for _ in range(6)] for _ in range(8)]  # 0 represents available cell
         self.players = [player1, player2]
         self.current_player_index = 0
+        self.start_time = None
 
         # Initial positions for the players
         self.player_positions = {
@@ -84,7 +86,8 @@ class Isolation:
         # Log the heuristic value for the move chosen
         if isinstance(player, ComputerPlayer):
             heuristic_value = player.heuristic(mock_game, player)
-            logger.info(f"Chose Move: {move} with Heuristic Value: {heuristic_value}")
+            # logging for checking evaluations of minimax
+            # logger.info(f"evaluated Move: {move} with Heuristic Value: {heuristic_value}")
 
         return mock_game
 
@@ -119,11 +122,6 @@ class Isolation:
             self.player_positions[player] = (row, col)
             self.update_board_with_players()
             self.awaiting_token_removal = True
-            logger.info(f"{player.name} moved to ({row}, {col}).")
-            logger.info("Board State:")
-            for row in self.board:
-                logger.info(row)
-            logger.info("Awaiting token removal...")
             self.moves_by_player[player] += 1
             return True
         logger.warning(f"Invalid move attempted by {player.name} to ({row}, {col}).")
@@ -149,10 +147,6 @@ class Isolation:
             self.awaiting_token_removal = False
             current_player = self.players[self.current_player_index]
             self.tokens_removed_by_player[current_player] += 1
-            logger.info(f"{current_player.name} removed a token at ({row}, {col}).")
-            logger.info("Board State:")
-            for row in self.board:
-                logger.info(row)
             return True
         logger.warning(f"Invalid token removal attempted at ({row}, {col}).")
         return False
@@ -162,6 +156,8 @@ class Isolation:
         logger.info(f"Moves made by {self.players[1].name}: {self.moves_by_player[self.players[1]]}")
         logger.info(f"Tokens Removed by {self.players[0].name}: {self.tokens_removed_by_player[self.players[0]]}")
         logger.info(f"Tokens Removed by {self.players[1].name}: {self.tokens_removed_by_player[self.players[1]]}")
+        elapsed_time = time.time() - self.start_time
+        logger.info(f"Time taken for the game: {elapsed_time:.2f} seconds")
 
     def is_game_over(self):
         # Check if the current player can make any valid moves

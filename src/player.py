@@ -30,7 +30,7 @@ class HumanPlayer(Player):
         pass
 
 class ComputerPlayer(Player):
-    DEPTH = 8  # Default depth
+    DEPTH = 7  # Default depth
 
     def __init__(self, name, heuristic=None):
         super().__init__(name)
@@ -75,9 +75,8 @@ class ComputerPlayer(Player):
             return min_eval
 
     def choose_move(self, game_state):
-        """Choose a move using MiniMax with Alpha-Beta pruning."""
         start_time = time.time()
-        time_limit = 8.0  # 1 second, adjust as necessary
+        time_limit = 8.0  # Adjust as necessary
 
         valid_moves = game_state.get_available_moves(self)
         if len(valid_moves) == 1:
@@ -87,28 +86,28 @@ class ComputerPlayer(Player):
         best_value = float('-inf')
         alpha = float('-inf')
         beta = float('inf')
-        depth = ComputerPlayer.DEPTH
 
-        evaluated_moves = set()
+        for depth in range(1, ComputerPlayer.DEPTH + 1):
+            for move in valid_moves:
+                mock_game_state = game_state.mock_move(self, move)
+                move_value = self.minimax(mock_game_state, depth-1, alpha, beta, False)
 
-        for move in valid_moves:
-            mock_game_state = game_state.mock_move(self, move)
-            move_value = self.minimax(mock_game_state, depth-1, alpha, beta, False)
+                if move_value > best_value:
+                    best_value = move_value
+                    best_move = move
 
-            if move_value > best_value:
-                best_value = move_value
-                best_move = move
-            
-            evaluated_moves.add(move)
+                # Check if we've surpassed our time limit
+                if time.time() - start_time > time_limit:
+                    break
 
-            # Check if we've surpassed our time limit
             if time.time() - start_time > time_limit:
                 break
 
-        # If we've already evaluated this move, use a fallback strategy
-        if best_move in evaluated_moves:
-            logger.warning("Fallback to random choice due to previously evaluated move.")
+        if best_move is None:
             best_move = random.choice(valid_moves)
+
+        # Log the chosen move
+        logger.info(f"{self.name} chooses move: {best_move}")
 
         return best_move
 
@@ -214,9 +213,7 @@ class ComputerPlayer(Player):
 
         best_token = max(scores, key=scores.get)
 
-        # Safety net: If AI is repeatedly choosing the same token, choose randomly
-        if hasattr(self, 'previous_token') and self.previous_token == best_token:
-            best_token = random.choice(available_tokens)
+        
         self.previous_token = best_token
-
+        logger.info(f"{self.name} chose to remove a token at ({best_token}).")
         return best_token

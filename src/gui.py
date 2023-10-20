@@ -1,3 +1,4 @@
+import time
 import random
 import logging
 import tkinter as tk
@@ -23,7 +24,7 @@ class ListboxHandler(logging.Handler):
 
 class IsolationGUI:
     # Define the class-level constant here
-    COMPUTER_TURN_DELAY = 100  # .1 second delay
+    COMPUTER_TURN_DELAY = 250  # .1 second delay
 
     def __init__(self, master):
         self.master = master
@@ -141,6 +142,10 @@ class IsolationGUI:
                         self.cells[i][j].config(bg="red")    # Player 2
 
     def handle_cell_click(self, event):
+        logger.info("handle_cell_click invoked")
+        if self.game and self.game.is_game_over():
+            return  # If the game is over, don't process any clicks
+        
         row, col = event.widget.grid_info()["row"] - 1, event.widget.grid_info()["column"]  # Offset row by 1
         current_player = self.game.players[self.game.current_player_index]
 
@@ -217,6 +222,8 @@ class IsolationGUI:
         self.master.geometry(f"+{x}+{y}")  # Return the window to its original location
 
     def start_game(self):
+        self.start_time = time.time()
+
         # Initialize the game with the selected players
         player1_class = HumanPlayer if self.player1_var.get() == "Human" else ComputerPlayer
         player2_class = HumanPlayer if self.player2_var.get() == "Human" else ComputerPlayer
@@ -225,7 +232,7 @@ class IsolationGUI:
 
         # Randomize the starting player
         self.game.current_player_index = random.choice([0, 1])
-        
+
         # Update light indicator for the starting player
         self.update_turn_indicator()
 
@@ -251,8 +258,8 @@ class IsolationGUI:
         for i in range(8):
             for j in range(6):
                 self.cells[i][j].config(bg="white")
-        self.player1_dropdown.config(state="normal")
-        self.player2_dropdown.config(state="normal")
+        self.player1_dropdown.config(state="readonly")
+        self.player2_dropdown.config(state="readonly")
         self.start_button.config(state="normal")
         self.restart_button.config(state="disabled")
         # Remove the reference to self.turn_prompt as it's not defined in the current class
@@ -278,8 +285,8 @@ class IsolationGUI:
             piece = self.confetti_canvas.create_rectangle(x, y, x+10, y+10, fill=confetti_color)
             self.confetti_pieces.append(piece)
 
-        # Start the animation
-        self.animate_confetti()
+        # Start the animation and save the ID
+        self.confetti_animation_id = self.master.after(50, self.animate_confetti)
 
     def animate_confetti(self):
         if not hasattr(self, 'confetti_canvas'):
@@ -293,6 +300,10 @@ class IsolationGUI:
 
     def close_confetti(self, event=None):
         """Hide the confetti canvas and prepare for a potential game restart."""
+        # Stop the confetti animation
+        if hasattr(self, 'confetti_animation_id'):
+            self.master.after_cancel(self.confetti_animation_id)
+            
         if hasattr(self, 'confetti_canvas'):
             self.confetti_canvas.destroy()
             del self.confetti_canvas  # Remove the reference to the canvas
@@ -301,14 +312,23 @@ class IsolationGUI:
     def display_game_over_message(self):
         # Create confetti canvas
         self.display_confetti()
-        
+
+        if hasattr(self, 'computer_turn_id'):
+            self.master.after_cancel(self.computer_turn_id)
+
         # Display a game over message
         winning_player_index = 1 - self.game.current_player_index  # Toggle between 0 and 1
         winning_player_name = self.game.players[winning_player_index].name
 
-        # Add the game over message to the canvas
-        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 - 50,
-                                        text=f"{winning_player_name} Wins!", font=('Arial', 24, 'bold'), fill='black')
+        # Calculate elapsed time
+        elapsed_time = time.time() - self.start_time
+        minutes, seconds = divmod(elapsed_time, 60)
+        elapsed_time_str = f"Elapsed Time: {int(minutes)} minutes {int(seconds)} seconds"
+
+        # Add the game over message (with elapsed time) to the canvas
+        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 - 70,  # Adjusted position for better spacing
+                                        text=f"{winning_player_name} Wins!\n{elapsed_time_str}", 
+                                        font=('Arial', 24, 'bold'), fill='black')
 
         # Add the game statistics below the game over message
         stats_text = (
@@ -317,5 +337,5 @@ class IsolationGUI:
             f"Tokens Removed by {self.game.players[0].name}: {self.game.tokens_removed_by_player[self.game.players[0]]}\n"
             f"Tokens Removed by {self.game.players[1].name}: {self.game.tokens_removed_by_player[self.game.players[1]]}"
         )
-        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 + 50,
+        self.confetti_canvas.create_text(self.master.winfo_width() / 2, self.master.winfo_height() / 2 + 30,  # Adjusted position for better spacing
                                         text=stats_text, font=('Arial', 14), fill='black')
