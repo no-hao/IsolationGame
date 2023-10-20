@@ -201,7 +201,7 @@ class IsolationGUI:
             # If the next player is also a computer, call this method again after a short delay
             next_player = self.game.players[self.game.current_player_index]
             if isinstance(next_player, ComputerPlayer):
-                self.computer_turn_id = self.master.after(IsolationGUI.COMPUTER_TURN_DELAY, self.execute_computer_turn)  # 1 second delay for visibility
+                self.computer_turn_id = self.master.after(IsolationGUI.COMPUTER_TURN_DELAY, self.execute_computer_turn)
 
     def shake_window(self):
         # Shake the window as feedback for invalid action

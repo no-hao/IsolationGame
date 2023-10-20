@@ -1,4 +1,6 @@
+import copy
 import logging
+from .player import ComputerPlayer
 logger = logging.getLogger("IsolationGameLogger")
 
 
@@ -28,6 +30,7 @@ class Isolation:
         self.board[row][col] = value
 
     def get_player_position(self, player):
+        # print("Player positions keys:", self.player_positions.keys())  # Debugging statement
         return self.player_positions[player]
 
     def get_available_moves(self, player):
@@ -63,6 +66,35 @@ class Isolation:
 
         return True
 
+    def mock_move(self, player, move):
+        """Creates a mock game state after making a move without altering the actual game state."""
+        mock_game = copy.deepcopy(self)
+
+        # Ensure the copied game state refers to the same player objects as the original game state
+        mock_game.players[0] = self.players[0]
+        mock_game.players[1] = self.players[1]
+        mock_game.player_positions[self.players[0]] = self.player_positions[self.players[0]]
+        mock_game.player_positions[self.players[1]] = self.player_positions[self.players[1]]
+
+        mock_game.moves_by_player[self.players[0]] = self.moves_by_player[self.players[0]]
+        mock_game.moves_by_player[self.players[1]] = self.moves_by_player[self.players[1]]
+
+        mock_game.make_move(player, *move)
+        
+        # Log the heuristic value for the move chosen
+        if isinstance(player, ComputerPlayer):
+            heuristic_value = player.heuristic(mock_game, player)
+            logger.info(f"Chose Move: {move} with Heuristic Value: {heuristic_value}")
+
+        return mock_game
+
+
+    def mock_remove_token(self, row, col):
+        """Simulate removing a token without affecting the actual game state."""
+        mock_game = copy.deepcopy(self)
+        mock_game.board[row][col] = -1  # Represent a removed token with -1
+        return mock_game
+
     def make_move(self, player, row, col):
         if self.is_valid_move(player, row, col):
             old_row, old_col = self.get_player_position(player)
@@ -71,9 +103,13 @@ class Isolation:
             self.update_board_with_players()
             self.awaiting_token_removal = True
             logger.info(f"{player.name} moved to ({row}, {col}).")
+            logger.info("Board State:")
+            for row in self.board:
+                logger.info(row)
             logger.info("Awaiting token removal...")
             self.moves_by_player[player] += 1
             return True
+        logger.warning(f"Invalid move attempted by {player.name} to ({row}, {col}).")
         return False
 
     def is_valid_token_removal(self, row, col):
@@ -94,7 +130,11 @@ class Isolation:
             current_player = self.players[self.current_player_index]
             self.tokens_removed_by_player[current_player] += 1
             logger.info(f"{current_player.name} removed a token at ({row}, {col}).")
+            logger.info("Board State:")
+            for row in self.board:
+                logger.info(row)
             return True
+        logger.warning(f"Invalid token removal attempted at ({row}, {col}).")
         return False
 
     def display_stats(self):
@@ -111,4 +151,5 @@ class Isolation:
         for dr, dc in directions:
             if self.is_valid_move(current_player, current_row + dr, current_col + dc):
                 return False
+        logger.info("Game over!")
         return True
