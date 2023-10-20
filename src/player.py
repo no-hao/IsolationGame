@@ -31,7 +31,7 @@ class HumanPlayer(Player):
 class ComputerPlayer(Player):
     def __init__(self, name, heuristic=None):
         super().__init__(name)
-        self.heuristic = heuristic if heuristic else self.frontier_cells_heuristic
+        self.heuristic = heuristic if heuristic else self.aggressive_approach_heuristic
 
     def best_move_using_heuristics(self, game_state):
         """Choose the best move using the provided heuristic function."""
@@ -43,8 +43,12 @@ class ComputerPlayer(Player):
         for move in valid_moves:
             mock_game_state = game_state.mock_move(self, move)
             score = self.heuristic(mock_game_state, self)
-            logger.info(f"Move: {move}, Heuristic Value: {score}")  # <-- Using logger to log the heuristic values
-            scores[move] = score
+            
+            # Add a small random perturbation to the score
+            perturbed_score = score + random.uniform(-0.01, 0.01)
+            
+            logger.info(f"Move: {move}, Heuristic Value: {score}, Perturbed Value: {perturbed_score}")
+            scores[move] = perturbed_score
 
         return max(scores, key=scores.get)
 
@@ -61,9 +65,13 @@ class ComputerPlayer(Player):
         for token in available_tokens:
             mock_game_state = game_state.mock_remove_token(*token)
             opponent_moves = len(mock_game_state.get_available_moves(opponent))
-            scores[token] = opponent_moves
+            
+            # Add a small random perturbation to the score
+            perturbed_score = opponent_moves + random.uniform(-0.01, 0.01)
+            
+            scores[token] = perturbed_score
 
-        # Choose the token whose removal minimizes the opponent's available moves
+        # Choose the token whose removal minimizes the opponent's available moves (after perturbation)
         return min(scores, key=scores.get)
 
     def choose_move(self, game_state):
