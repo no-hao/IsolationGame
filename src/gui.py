@@ -12,21 +12,37 @@ logger = logging.getLogger("IsolationGameLogger")
 logger.handlers = []  # Clear existing handlers
 
 class ListboxHandler(logging.Handler):
+    """Custom logging handler that sends log messages to a tkinter Listbox.
+    
+    Attributes:
+        listbox (tk.Listbox): The Listbox widget where log messages will be displayed.
+    """
+
     def __init__(self, listbox):
+        """Initializes the ListboxHandler with a Listbox widget."""
         super().__init__()
         self.listbox = listbox
 
     def emit(self, record):
+        """Override of base class emit method to insert log messages into the Listbox."""
         log_entry = self.format(record)
         self.listbox.insert(tk.END, log_entry)
         # Ensure the latest log is visible in the Listbox
         self.listbox.yview(tk.END)
 
 class IsolationGUI:
+    """Graphical User Interface for the Isolation Game.
+
+    Attributes:
+        master (tk.Tk): The main application window.
+        game (Isolation): The current game being played.
+    """
+
     # Define the class-level constant here
     COMPUTER_TURN_DELAY = 250  # .1 second delay
 
     def __init__(self, master):
+        """Initializes the GUI with the main application window."""
         self.master = master
         self.master.title("Isolation Game")
 
@@ -38,6 +54,7 @@ class IsolationGUI:
         self.setup_logger()
 
     def setup_player_selection(self):
+        """Sets up the player selection dropdowns and indicators."""
         # Player 1 Selection Frame
         self.player1_selection_frame = tk.Frame(self.master)
         self.player1_selection_frame.grid(row=0, column=0, columnspan=6, pady=(20, 10))
@@ -71,6 +88,7 @@ class IsolationGUI:
         self.player2_dropdown.pack(side=tk.LEFT, padx=10)
 
     def setup_side_panel(self):
+        """Sets up the legend and action log on the right side of the board."""
         # Legend and Action Log to the right of the board
         self.side_frame = tk.Frame(self.master)
         self.side_frame.grid(row=0, column=6, rowspan=12, sticky="ns", pady=(50, 0))  # Added padding at the top to move legend down
@@ -88,6 +106,7 @@ class IsolationGUI:
         self.action_log.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
 
     def setup_board(self):
+        """Sets up the game board with cells (labels) for player moves."""
         # Create the game board
         self.cells = []
         for i in range(8):
@@ -100,6 +119,7 @@ class IsolationGUI:
             self.cells.append(row)
 
     def setup_buttons(self):
+        """Sets up the Start and Restart buttons below the game board."""
         # Start and Restart buttons
         self.start_button = tk.Button(self.master, text="Start", command=self.start_game)
         self.start_button.grid(row=11, column=0, columnspan=3)
@@ -107,17 +127,20 @@ class IsolationGUI:
         self.restart_button.grid(row=11, column=3, columnspan=3)
 
     def setup_logger(self):
+        """Sets up the logging mechanism to send log messages to the action log."""
         handler = ListboxHandler(self.action_log)
         formatter = logging.Formatter('%(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
     def setup_bindings(self):
+        """Binds keyboard keys to specific actions (e.g., "Escape" to close confetti)."""
         # Bind the "Escape" key to the close_confetti method
         self.master.bind("<Escape>", self.close_confetti)
 
     # When updating the turn, we should also update the light indicators:
     def update_turn_indicator(self):
+        """Updates the turn indicator lights based on the current player's turn."""
         # If player 1's turn
         if self.game.current_player_index == 0:
             self.player1_light.config(bg="#27c840") # green
@@ -128,6 +151,7 @@ class IsolationGUI:
             self.player2_light.config(bg="#27c840")
 
     def refresh_board(self):
+        """Refreshes the GUI board to reflect the current game state."""
         for i in range(8):
             for j in range(6):
                 cell_value = self.game.board[i][j]
@@ -142,6 +166,7 @@ class IsolationGUI:
                         self.cells[i][j].config(bg="red")    # Player 2
 
     def handle_cell_click(self, event):
+        """Handles cell click events to make moves or remove tokens."""
         logger.info("handle_cell_click invoked")
         if self.game and self.game.is_game_over():
             return  # If the game is over, don't process any clicks
@@ -175,6 +200,7 @@ class IsolationGUI:
             self.master.after(1000, self.execute_computer_turn)  # Start the computer's turn after a 1-second delay
 
     def execute_computer_turn(self):
+        """Executes the computer player's turn."""
         # Check if the game is over
         if self.game.is_game_over():
             self.display_game_over_message()
@@ -209,6 +235,7 @@ class IsolationGUI:
                 self.computer_turn_id = self.master.after(IsolationGUI.COMPUTER_TURN_DELAY, self.execute_computer_turn)
 
     def shake_window(self):
+        """Shakes the main window as feedback for an invalid action."""
         # Shake the window as feedback for invalid action
         x, y = self.master.winfo_x(), self.master.winfo_y()
         offset = 5  # Number of pixels to move the window
@@ -222,6 +249,7 @@ class IsolationGUI:
         self.master.geometry(f"+{x}+{y}")  # Return the window to its original location
 
     def start_game(self):
+        """Starts a new game based on the selected players."""
         self.start_time = time.time()
 
         # Initialize the game with the selected players
@@ -253,6 +281,7 @@ class IsolationGUI:
             self.master.after(1000, self.execute_computer_turn)  # Start the computer's turn after a 1-second delay
 
     def restart_game(self):
+        """Restarts the game, resetting the board and game-related variables."""
         # Reset the board and game-related variables
         self.game = None
         for i in range(8):
@@ -272,6 +301,7 @@ class IsolationGUI:
         logger.info("Game restarted.")
 
     def display_confetti(self):
+        """Displays confetti animation when the game is over."""
         # Create a canvas overlaying the entire game board
         self.confetti_canvas = tk.Canvas(self.master, width=self.master.winfo_width(), height=self.master.winfo_height(), bd=0, highlightthickness=0)
         self.confetti_canvas.grid(row=0, column=0, rowspan=12, columnspan=7)
@@ -289,6 +319,7 @@ class IsolationGUI:
         self.confetti_animation_id = self.master.after(50, self.animate_confetti)
 
     def animate_confetti(self):
+        """Handles the animation of the confetti."""
         if not hasattr(self, 'confetti_canvas'):
             return  # Exit the method if there's no confetti canvas
         for piece in self.confetti_pieces:
@@ -299,7 +330,7 @@ class IsolationGUI:
         self.master.after(50, self.animate_confetti)  # Repeat every 50 ms
 
     def close_confetti(self, event=None):
-        """Hide the confetti canvas and prepare for a potential game restart."""
+        """Hides the confetti canvas and prepares for a potential game restart."""
         # Stop the confetti animation
         if hasattr(self, 'confetti_animation_id'):
             self.master.after_cancel(self.confetti_animation_id)
@@ -310,6 +341,7 @@ class IsolationGUI:
             self.restart_game()  # Prepare for a new game
 
     def display_game_over_message(self):
+        """Displays the game over message and statistics on the board."""
         # Create confetti canvas
         self.display_confetti()
 
