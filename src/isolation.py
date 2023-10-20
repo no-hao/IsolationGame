@@ -6,7 +6,20 @@ logger = logging.getLogger("IsolationGameLogger")
 
 
 class Isolation:
+    """Represents the Isolation game state.
+
+    Attributes:
+        board (list[list[int]]): The game board.
+        players (list[Player]): The list of players.
+        current_player_index (int): Index of the current player.
+        start_time (float): The start time of the game.
+        player_positions (dict): Current positions of the players.
+        awaiting_token_removal (bool): If True, the game is waiting for a token removal action.
+        tokens_removed_by_player (dict): Count of tokens removed by each player.
+        moves_by_player (dict): Count of moves made by each player.
+    """
     def __init__(self, player1, player2):
+        """Initializes the game board and players."""
         self.board = [[0 for _ in range(6)] for _ in range(8)]  # 0 represents available cell
         self.players = [player1, player2]
         self.current_player_index = 0
@@ -26,12 +39,15 @@ class Isolation:
         self.moves_by_player = {self.players[0]: 0, self.players[1]: 0}
 
     def get_cell_value(self, row, col):
+        """Returns the value of a cell at the given row and column."""
         return self.board[row][col]
 
     def set_cell_value(self, row, col, value):
+        """Sets the value of a cell at the given row and column."""
         self.board[row][col] = value
 
     def get_player_position(self, player):
+        """Returns the current position of the given player."""
         # print("Player positions keys:", self.player_positions.keys())  # Debugging statement
         return self.player_positions[player]
 
@@ -48,11 +64,13 @@ class Isolation:
         return available_tokens
 
     def update_board_with_players(self):
+        """Updates the board with the current positions of the players."""
         for player, position in self.player_positions.items():
             row, col = position
             self.set_cell_value(row, col, player)
 
     def is_valid_move(self, player, row, col):
+        """Checks if a move is valid for the given player to the specified row and column."""
         # Check if move is within board boundaries
         if not (0 <= row < 8 and 0 <= col < 6):
             return False
@@ -116,6 +134,7 @@ class Isolation:
         return mock_game
 
     def make_move(self, player, row, col):
+        """Makes a move for the given player to the specified row and column."""
         if self.is_valid_move(player, row, col):
             old_row, old_col = self.get_player_position(player)
             self.set_cell_value(old_row, old_col, 0)  # Reset the old cell
@@ -128,6 +147,7 @@ class Isolation:
         return False
 
     def is_valid_token_removal(self, row, col):
+        """Checks if a token removal is valid at the specified row and column."""
         # Check if removal is within board boundaries
         if not (0 <= row < 8 and 0 <= col < 6):
             return False
@@ -142,6 +162,7 @@ class Isolation:
         return True
 
     def remove_token(self, row, col):
+        """Removes a token from the board at the specified row and column."""
         if self.is_valid_token_removal(row, col):
             self.set_cell_value(row, col, -1)
             self.awaiting_token_removal = False
@@ -152,6 +173,7 @@ class Isolation:
         return False
 
     def display_stats(self):
+        """Displays game statistics such as moves made and tokens removed by each player."""
         logger.info(f"Moves made by {self.players[0].name}: {self.moves_by_player[self.players[0]]}")
         logger.info(f"Moves made by {self.players[1].name}: {self.moves_by_player[self.players[1]]}")
         logger.info(f"Tokens Removed by {self.players[0].name}: {self.tokens_removed_by_player[self.players[0]]}")
@@ -160,6 +182,7 @@ class Isolation:
         logger.info(f"Time taken for the game: {elapsed_time:.2f} seconds")
 
     def is_game_over(self):
+        """Checks if the game is over."""
         # Check if the current player can make any valid moves
         current_player = self.players[self.current_player_index]
         current_row, current_col = self.get_player_position(current_player)
