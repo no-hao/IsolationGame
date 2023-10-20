@@ -6,37 +6,58 @@ logger = logging.getLogger("IsolationGameLogger")
 from abc import ABC, abstractmethod
 
 class Player(ABC):
+    """Abstract base class for a Player in the Isolation game.
+
+    Attributes:
+        name (str): Name of the player.
+    """
+
     def __init__(self, name):
+        """Initializes the player with a name."""
         self.name = name
 
     @abstractmethod
     def choose_move(self, game_state):
+        """Abstract method for choosing a move based on the current game state."""
         pass
 
     @abstractmethod
     def choose_token_to_remove(self, game_state):
+        """Abstract method for choosing a token to remove based on the current game state."""
         pass
 
 class HumanPlayer(Player):
+    """Represents a human player in the Isolation game."""
+
     def __init__(self, name):
+        """Initializes the human player with a name."""
         super().__init__(name)
 
     def choose_move(self, game_state):
-        # Logic for human player to choose a move
+        """Logic for the human player to choose a move."""
         pass
 
     def choose_token_to_remove(self, game_state):
-        # Logic for human player to choose a token to remove
+        """Logic for the human player to choose a token to remove."""
         pass
 
 class ComputerPlayer(Player):
+    """Represents a computer player in the Isolation game using Minimax and heuristics.
+
+    Attributes:
+        DEPTH (int): Search depth for Minimax algorithm.
+        heuristic (func): Heuristic function to evaluate game states.
+    """
+
     DEPTH = 7  # Default depth
 
     def __init__(self, name, heuristic=None):
+        """Initializes the computer player with a name and heuristic function."""
         super().__init__(name)
         self.heuristic = heuristic if heuristic else self.aggressive_approach_heuristic
 
     def minimax(self, game_state, depth, alpha, beta, maximizing_player):
+        """Implements the Minimax algorithm with Alpha-Beta pruning."""
         # Base case: terminal state or depth reached
         if depth == 0:
             return self.heuristic(game_state, self)
@@ -75,6 +96,7 @@ class ComputerPlayer(Player):
             return min_eval
 
     def choose_move(self, game_state):
+        """Chooses the best move for the computer player based on Minimax."""
         start_time = time.time()
         time_limit = 8.0  # Adjust as necessary
 
@@ -116,6 +138,7 @@ class ComputerPlayer(Player):
         return self.token_removal_heuristic(game_state)
 
     def composite_heuristic(self, game_state, player):
+        """Combines multiple heuristics to evaluate the game state."""
         w1, w2, w3 = 0.4, 0.3, 0.3  # These weights can be tuned
         
         mobility_score = w1 * self.enhanced_mobility_heuristic(game_state, player)
@@ -125,6 +148,7 @@ class ComputerPlayer(Player):
         return mobility_score + center_control_score + difference_score
 
     def frontier_cells_heuristic(self, game_state, player):
+        """Evaluates the game state based on the frontier cells around the player."""
         # Compute the positions after the move
         row, col = game_state.get_player_position(player)
 
@@ -139,24 +163,28 @@ class ComputerPlayer(Player):
         return non_empty_count
 
     def aggressive_approach_heuristic(self, game_state, player):
+        """Evaluates the game state based on the aggressive approach strategy."""
         opponent = game_state.players[0] if player == game_state.players[1] else game_state.players[1]
         our_valid_moves = game_state.get_available_moves(player)
         opponent_valid_moves = game_state.get_available_moves(opponent)
         return 2 * len(our_valid_moves) - len(opponent_valid_moves)
 
     def enhanced_mobility_heuristic(self, game_state, player):
+        """Evaluates the game state based on the mobility of the player."""
         immediate_moves = game_state.get_available_moves(player)
         lambda_factor = 0.5
         future_mobility = sum([len(game_state.mock_move(player, move).get_available_moves(player)) for move in immediate_moves])
         return len(immediate_moves) + lambda_factor * future_mobility
 
     def control_of_center_heuristic(self, game_state, player):
+        """Evaluates the game state based on control of the center of the board."""
         row, col = game_state.get_player_position(player)
         center_row, center_col = 4, 3
         distance_from_center = abs(center_row - row) + abs(center_col - col)
         return -distance_from_center  # We want to minimize this distance
 
     def enhanced_difference_heuristic(self, game_state, player):
+        """Evaluates the game state based on the difference in valid moves."""
         opponent = game_state.players[0] if player == game_state.players[1] else game_state.players[1]
         
         our_moves = len(game_state.get_available_moves(player))
@@ -168,6 +196,7 @@ class ComputerPlayer(Player):
         return 2 * (our_moves - opponent_moves) + (our_future_mobility - opponent_future_mobility)
 
     def token_removal_heuristic(self, game_state):
+        """Chooses a token to remove based on various factors and heuristics."""
         available_tokens = game_state.get_available_tokens_to_remove()
         if not available_tokens:
             logger.warning("No valid tokens to remove.")
