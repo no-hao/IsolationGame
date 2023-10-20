@@ -37,11 +37,14 @@ Note: Most of the above libraries come pre-installed with Python. Only `tkinter`
 ## File Structure
 ```
 .
-├── main.py           # Entry point to start the game
+├── main.py                     # Entry point to start the game
+└──docs
+    ├── experiment1_data.xlsx   # Contains data from the experiments.
+    └── experiment_report.pdf   # Contains the report on the experiment.
 └──src
-    ├── gui.py            # Contains GUI implementation for the game
-    ├── isolation.py      # Core game logic and rules
-    └── player.py         # Contains player behavior and properties
+    ├── gui.py                  # Contains GUI implementation for the game
+    ├── isolation.py            # Core game logic and rules
+    └── player.py               # Contains player behavior and properties
     ```
 
 ## How to Play

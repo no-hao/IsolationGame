@@ -34,7 +34,7 @@ class ComputerPlayer(Player):
 
     def __init__(self, name, heuristic=None):
         super().__init__(name)
-        self.heuristic = heuristic if heuristic else self.frontier_cells_heuristic
+        self.heuristic = heuristic if heuristic else self.aggressive_approach_heuristic
 
     def minimax(self, game_state, depth, alpha, beta, maximizing_player):
         # Base case: terminal state or depth reached
