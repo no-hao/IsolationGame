@@ -3,7 +3,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk, messagebox, Canvas
 from .isolation import Isolation
-from .player import Player, HumanPlayer
+from .player import Player, HumanPlayer, ComputerPlayer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -22,6 +22,9 @@ class ListboxHandler(logging.Handler):
         self.listbox.yview(tk.END)
 
 class IsolationGUI:
+    # Define the class-level constant here
+    COMPUTER_TURN_DELAY = 100  # .1 second delay
+
     def __init__(self, master):
         self.master = master
         self.master.title("Isolation Game")
@@ -162,6 +165,44 @@ class IsolationGUI:
         if self.game.is_game_over():
             self.display_game_over_message()
 
+        next_player = self.game.players[self.game.current_player_index]
+        if isinstance(next_player, ComputerPlayer):
+            self.master.after(1000, self.execute_computer_turn)  # Start the computer's turn after a 1-second delay
+
+    def execute_computer_turn(self):
+        # Check if the game is over
+        if self.game.is_game_over():
+            self.display_game_over_message()
+            return
+
+        # Get the current player
+        current_player = self.game.players[self.game.current_player_index]
+
+        # If the current player is a computer
+        if isinstance(current_player, ComputerPlayer):
+            if not self.game.awaiting_token_removal:
+                # Get a move from the computer and make it
+                move = current_player.choose_move(self.game)
+                if move:
+                    row, col = move
+                    self.game.make_move(current_player, row, col)
+            else:
+                # Get a token removal choice from the computer and execute it
+                token_removal = current_player.choose_token_to_remove(self.game)
+                if token_removal:
+                    row, col = token_removal
+                    self.game.remove_token(row, col)
+                    self.game.current_player_index ^= 1  # Only toggle the player after token removal
+
+            # Refresh the board state in the GUI
+            self.refresh_board()
+            self.update_turn_indicator()
+
+            # If the next player is also a computer, call this method again after a short delay
+            next_player = self.game.players[self.game.current_player_index]
+            if isinstance(next_player, ComputerPlayer):
+                self.computer_turn_id = self.master.after(IsolationGUI.COMPUTER_TURN_DELAY, self.execute_computer_turn)  # 1 second delay for visibility
+
     def shake_window(self):
         # Shake the window as feedback for invalid action
         x, y = self.master.winfo_x(), self.master.winfo_y()
@@ -200,6 +241,9 @@ class IsolationGUI:
         # logging message
         logger.info(f"Game started. {self.game.players[self.game.current_player_index].name} goes first.")
 
+        starting_player = self.game.players[self.game.current_player_index]
+        if isinstance(starting_player, ComputerPlayer):
+            self.master.after(1000, self.execute_computer_turn)  # Start the computer's turn after a 1-second delay
 
     def restart_game(self):
         # Reset the board and game-related variables
@@ -213,6 +257,9 @@ class IsolationGUI:
         self.restart_button.config(state="disabled")
         # Remove the reference to self.turn_prompt as it's not defined in the current class
         self.action_log.delete(0, tk.END)  # Clear the action log
+
+        if hasattr(self, 'computer_turn_id'):
+            self.master.after_cancel(self.computer_turn_id)
 
         # logging message
         logger.info("Game restarted.")

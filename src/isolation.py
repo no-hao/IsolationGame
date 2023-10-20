@@ -30,6 +30,18 @@ class Isolation:
     def get_player_position(self, player):
         return self.player_positions[player]
 
+    def get_available_moves(self, player):
+        """Return a list of available moves for the given player."""
+        current_row, current_col = self.get_player_position(player)
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+        valid_moves = [(current_row + dr, current_col + dc) for dr, dc in directions if self.is_valid_move(player, current_row + dr, current_col + dc)]
+        return valid_moves
+
+    def get_available_tokens_to_remove(self):
+        """Return a list of available tokens to remove from the board."""
+        available_tokens = [(i, j) for i in range(8) for j in range(6) if self.is_valid_token_removal(i, j)]
+        return available_tokens
+
     def update_board_with_players(self):
         for player, position in self.player_positions.items():
             row, col = position
@@ -58,7 +70,8 @@ class Isolation:
             self.player_positions[player] = (row, col)
             self.update_board_with_players()
             self.awaiting_token_removal = True
-            logger.info(f"{player.name} moved to ({row}, {col}). Awaiting token removal.")
+            logger.info(f"{player.name} moved to ({row}, {col}).")
+            logger.info("Awaiting token removal...")
             self.moves_by_player[player] += 1
             return True
         return False
@@ -80,7 +93,7 @@ class Isolation:
             self.awaiting_token_removal = False
             current_player = self.players[self.current_player_index]
             self.tokens_removed_by_player[current_player] += 1
-            logger.info(f"Token removed at ({row}, {col}).")
+            logger.info(f"{current_player.name} removed a token at ({row}, {col}).")
             return True
         return False
 

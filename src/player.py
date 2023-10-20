@@ -1,3 +1,4 @@
+import random
 from abc import ABC, abstractmethod
 
 class Player(ABC):
@@ -23,9 +24,12 @@ class HumanPlayer(Player):
 
 class ComputerPlayer(Player):
     def choose_move(self, game_state):
-        # Logic for computer to choose a move
-        pass
+        """Choose a random valid move."""
+        valid_moves = game_state.get_available_moves(self)
+        return random.choice(valid_moves) if valid_moves else None
 
     def choose_token_to_remove(self, game_state):
-        # Logic for computer to choose a token to remove
-        pass
+        """Choose a random valid token to remove."""
+        available_tokens = game_state.get_available_tokens_to_remove()
+        return random.choice(available_tokens) if available_tokens else None
+
